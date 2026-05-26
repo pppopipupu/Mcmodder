@@ -1,5 +1,4 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { GM_getValue } from '$';
 
 let supabaseInstance: SupabaseClient | null = null;
 
@@ -8,20 +7,8 @@ export function getSupabaseClient(): SupabaseClient | null {
     return supabaseInstance;
   }
 
-  let supabaseUrl = "";
-  let supabaseKey = "";
-
-  try {
-    const settings = JSON.parse(GM_getValue("mcmodderSettings") || "{}");
-    if (settings.customSupabaseUrl && settings.customSupabaseKey) {
-      supabaseUrl = settings.customSupabaseUrl;
-      supabaseKey = settings.customSupabaseKey;
-    }
-  } catch (e) {}
-
-  if (!supabaseUrl || !supabaseKey) {
-    return null;
-  }
+  const supabaseUrl = "https://kjghwgrbawdtatyrrxin.supabase.co";
+  const supabaseKey = "sb_publishable_yQ4SlDDDQ8OE8tgbnLrkNw_deH9GSjd";
 
   try {
     supabaseInstance = createClient(supabaseUrl, supabaseKey, {

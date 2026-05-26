@@ -1,5 +1,6 @@
 import { McmodderUtils } from "../Utils";
 import { McmodderInit } from "./Init";
+import { CommentAttitudeSystem } from "../widget/CommentAttitudeSystem";
 
 export class CommentInit extends McmodderInit {
   canRun() {
@@ -113,6 +114,8 @@ export class CommentInit extends McmodderInit {
             })
           });
         }
+        CommentAttitudeSystem.processElements(commentFloor);
+        CommentAttitudeSystem.fetchAttitudeCounts(this.parent);
       }
       else if (className === "common-comment-block lazy" && mutation.addedNodes.length > 0) {
         this.unlockComment();
@@ -193,6 +196,10 @@ export class CommentInit extends McmodderInit {
         block: "center"
       });
     }
+    CommentAttitudeSystem.processElements($(document.body));
+    CommentAttitudeSystem.fetchAttitudeCounts(this.parent);
+    CommentAttitudeSystem.bindEvents(this.parent);
+    CommentAttitudeSystem.checkNotifications(this.parent);
     const commentContainer = $(".common-comment-block.lazy");
     if (commentContainer.length) this.commentObserver.observe(commentContainer.get(0), {
       childList: true,
