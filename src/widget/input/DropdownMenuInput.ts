@@ -39,7 +39,6 @@ export class McmodderDropdownInput extends McmodderInput<number> {
       const num = Number(key);
       const option = $(`<option>`).attr("value", key);
       let content = this.range[num];
-      if (this.value === num) content += " (默认)";
       option.html(content).appendTo(this.instance);
     });
     this.setDisplayValue(this.value);

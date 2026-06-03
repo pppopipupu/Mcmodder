@@ -474,7 +474,7 @@ export class Mcmodder3DSplash {
     dirLightTop.position.set(0, 10, 0);
     this.scene.add(dirLightTop);
 
-    const fontUrl = this.parent.utils.getConfig("splashFontUrl") || "https://cdn.jsdelivr.net.cn/npm/noto-sans-sc-ttf@1.0.0/fonts/NotoSansSC-Regular.ttf";
+    const fontUrl = this.parent.utils.getConfig("splashFontUrl") || "https://cdn.jsdelivr.net.cn/npm/@electron-fonts/noto-sans-sc/fonts/NotoSansSC-Regular.ttf";
 
     const ttfLoader = new TTFLoader();
     (ttfLoader as any).displayText = displayText;
