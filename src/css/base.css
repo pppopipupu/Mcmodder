@@ -416,7 +416,8 @@ body .copyleft a:hover,
 .bd-callout p {
   color: var(--mcmodder-color-button);
 }
-.text-muted {
+.text-muted,
+.text-muted p {
   color: var(--mcmodder-color-button) !important;
 }
 .text-muted-muted {
@@ -475,7 +476,8 @@ body .top-main .pulldown .top_content,
 .list-mod-category li img,
 #server-tool li,
 .message-menu ul,
-.edit-dataverify-frame {
+.edit-dataverify-frame,
+.common-center .item-skip-list fieldset {
   border-color: var(--mcmodder-color-background-dark2);
 }
 .news_block .left .text #random_refresh,
@@ -1172,6 +1174,7 @@ body:not(.view),
   background-image: linear-gradient(180deg, #0000, var(--mcmodder-color-background));
 }
 .comment-quote-block,
+.comment-skip-block,
 .comment-skip-block .common-text table th,
 th,
 .common-class-category li .normal.gray,
@@ -1180,6 +1183,9 @@ th,
   background-color: var(--mcmodder-color-background-dark1);
   border-color: var(--mcmodder-color-background-dark2);
   background-image: unset;
+}
+.comment-skip-block {
+  border-left-color: var(--mcmodder-color-text-info);
 }
 .mcmodder-mark-gold {
   background-color: #fd04 !important;
