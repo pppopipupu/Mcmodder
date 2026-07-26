@@ -77,14 +77,14 @@ export class Mcmodder {
     this.title = this.titleNode.html().replace(" - MC百科|最大的Minecraft中文MOD百科", "");
     this.hostname = McmodderValues.hostname;
 
-    this.echartsUtils = new EchartsUtils(this);
-
     this.screenAttachedFrame = [];
     
     this.storageBuffer = new StorageBuffer(this);
     StorageBufferLoader.run(this.storageBuffer);
 
     this.utils = new McmodderUtils(this);
+
+    this.echartsUtils = new EchartsUtils(this);
 
     this.cfgutils = new McmodderConfigUtils(this);
     ConfigLoader.run(this.cfgutils);
@@ -386,25 +386,16 @@ export class Mcmodder {
   applyCustomFont(font: number) {
     switch (font) {
       case 1: {
-        McmodderUtils.addStyle('* {font-family: "-apple-system", "Segoe UI", "Roboto", "Ubuntu", "Arial", "Helvetica", sans-serif;}');
+        McmodderUtils.addStyle(`* {font-family: ${ McmodderValues.assets.font.fontFamily[font] };}`);
         break;
       }
-      case 2: {
+      case 2: case 3: {
         $(`
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100..900&display=swap" rel="stylesheet">
+          <link href="${ McmodderValues.assets.font.link[font] }" rel="stylesheet">
         `).appendTo("head");
-        McmodderUtils.addStyle('* {font-family: "Noto Sans SC", sans-serif;}');
-        break;
-      }
-      case 3: {
-        $(`
-          <link rel="preconnect" href="https://fonts.googleapis.com">
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-        `).appendTo("head");
-        McmodderUtils.addStyle('* {font-family: "Inter", sans-serif;}');
+        McmodderUtils.addStyle(`* {font-family: "${ McmodderValues.assets.font.fontFamily[font] };}`);
         break;
       }
     }

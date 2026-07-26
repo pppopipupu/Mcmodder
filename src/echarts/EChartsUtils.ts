@@ -1,4 +1,5 @@
 import { Mcmodder } from "../Mcmodder";
+import { McmodderValues } from "../Values";
 
 export class EchartsUtils {
 
@@ -8,15 +9,19 @@ export class EchartsUtils {
   classUserWordChart: any;
   classIndexChart: any;
   centerEditChart: any;
+  font: 0 | 1 | 2 | 3 | undefined;
 
   constructor(parent: Mcmodder) {
     this.parent = parent;
     // Echarts 图表相关兼容
     if (typeof echarts != "undefined") {
       let t = document.getElementById("class-rating");
-      if (t) this.classRatingChart = echarts.getInstanceById(t.getAttribute("_echarts_instance_"));
+      if (t) this.setChartFont(this.classRatingChart = echarts.getInstanceById(t.getAttribute("_echarts_instance_")));
       t = document.getElementById("center-editchart-obj");
-      if (t) this.centerEditChart = echarts.getInstanceById(t.getAttribute("_echarts_instance_"));
+      if (t) this.setChartFont(this.centerEditChart = echarts.getInstanceById(t.getAttribute("_echarts_instance_")));
+
+      // 获取字体
+      this.font = this.parent.utils.getConfig("customFont");
 
       // 用户贡献饼图
       const classUserChartObserver = new MutationObserver(mutationList => {
@@ -25,13 +30,13 @@ export class EchartsUtils {
             const element = node as Element;
             const id = element?.id;
             if (id === "chart-edit") {
-              this.classUserEditChart = echarts.getInstanceById(element.getAttribute("_echarts_instance_"));
+              this.setChartFont(this.classUserEditChart = echarts.getInstanceById(element.getAttribute("_echarts_instance_")));
               if (parent.isNightMode) {
                 this.setClassUserChartNightStyle(this.classUserEditChart);
               }
             }
             else if (id === "chart-word") {
-              this.classUserWordChart = echarts.getInstanceById(element.getAttribute("_echarts_instance_"));
+              this.setChartFont(this.classUserWordChart = echarts.getInstanceById(element.getAttribute("_echarts_instance_")));
               if (parent.isNightMode) {
                 this.setClassUserChartNightStyle(this.classUserWordChart);
               }
@@ -54,7 +59,7 @@ export class EchartsUtils {
             const element = node as Element;
             const id = element?.id;
             if (id === "chart-index") {
-              this.classIndexChart = echarts.getInstanceById(element.getAttribute("_echarts_instance_"));
+              this.setChartFont(this.classIndexChart = echarts.getInstanceById(element.getAttribute("_echarts_instance_")));
               if (parent.isNightMode) {
                 this.setClassIndexChartNightStyle();
               }
@@ -66,6 +71,23 @@ export class EchartsUtils {
       if (classIndexChartFrame) {
         classIndexChartObserver.observe(classIndexChartFrame, { subtree: true, childList: true });
       }
+    }
+  }
+
+  setChartFont(chart: any) {
+    if (!this.font) return;
+    let o = chart?.getOption();
+    if (o) {
+      const fontFamily = McmodderValues.assets.font.fontFamily[this.font];
+      const newOption: any = {
+        textStyle: { fontFamily }
+      };
+      if (chart === this.centerEditChart) {
+        newOption.calendar = [{
+          yearLabel: { fontFamily }
+        }];
+      }
+      chart.setOption(newOption);
     }
   }
 
