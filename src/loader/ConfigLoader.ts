@@ -34,8 +34,10 @@ export class ConfigLoader {
     .addCheckboxConfig("enableSplashTracker", "闪烁标语追踪器", "打开百科任意主页时，自动记录页面所弹出的<del>重生骚话语录</del>闪烁标语。")
     .addDropdownConfig("splashStyle", "闪烁标语渲染风格", "选择主页闪烁标语的渲染效果。",
       0, { 0: "默认风格", 1: "3D Bloom 旋转字 (WebGPU)" })
-    .addTextConfig("splashFontUrl", "闪烁标语 3D 字体 URL", "闪烁标语在 3D Bloom 风格下所使用的 TTF 字体 CDN 链接。",
-      "https://cdn.jsdelivr.net.cn/npm/@electron-fonts/noto-sans-sc/fonts/NotoSansSC-Regular.ttf")
+    .addDropdownTextConfig("splashFontUrl", "闪烁标语 3D 字体 URL", "闪烁标语在 3D Bloom 风格下所使用的 TTF 字体 CDN 链接。",
+      "https://cdn.jsdelivr.net.cn/npm/@electron-fonts/noto-sans-sc/fonts/NotoSansSC-Regular.ttf", [
+        { html: "Noto Sans SC", value: "https://cdn.jsdelivr.net.cn/npm/@electron-fonts/noto-sans-sc/fonts/NotoSansSC-Regular.ttf", showValue: true }
+      ])
     .addCheckboxConfig("enableLive2D", "Live2D", "召唤百科娘！（如果不小心赶跑了可以在这里恢复）")
     .addCheckboxConfig("enableAprilFools", "愚人节特性", "允许百科愚人节彩蛋在任意日期触发。")
     .addCheckboxConfig("autoCheckin", "自动签到", "每日首次访问百科，或是本机时间为 00:00:00 时，自动执行签到操作。")

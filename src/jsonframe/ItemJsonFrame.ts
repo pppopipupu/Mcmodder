@@ -1,7 +1,7 @@
 import { GM_openInTab } from "$";
 import { McmodderLoggerFrame } from "../widget/logger/LoggerFrame";
 import { Mcmodder } from "../Mcmodder";
-import { ItemJsonFrameApplication, ItemJsonFrameConfig, McmodderItemData, McmodderItemList, McmodderTableRowSelection } from "../types";
+import { InputRecommendation, ItemJsonFrameApplication, ItemJsonFrameConfig, McmodderItemData, McmodderItemList, McmodderTableRowSelection } from "../types";
 import { Pagination } from "../widget/Pagination";
 import { McmodderDetailedItemListRequestQueue } from "../requestqueue/DetailedItemRequestQueue";
 import { McmodderInferItemListRequestQueue } from "../requestqueue/InferRequestQueue";
@@ -12,7 +12,7 @@ import { McmodderTable } from "../table/Table";
 import { McmodderUtils } from "../Utils";
 import { JsonFrame } from "./JsonFrame";
 import { McmodderValues } from "../Values";
-import { InputList, InputRecommendation } from "../widget/InputList";
+import { InputList } from "../widget/InputList";
 import { McmodderInputType } from "../config/ConfigUtils";
 
 export interface McmodItemEditorInnerData {

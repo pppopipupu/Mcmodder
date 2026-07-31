@@ -2352,22 +2352,28 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
 }
 .mcmodder-input-container {
   position: relative;
+  display: inline-block;
 }
 .mcmodder-input-list {
   position: absolute;
-  top: 100%;
-  width: 100%;
-  background-color: var(--mcmodder-color-background-transparent);
+  top: calc(100% + .2em);
+  min-width: 100%;
+  background-color: var(--mcmodder-color-background);
   backdrop-filter: blur(10px);
   max-height: 300px;
-  overflow: scroll;
+  overflow-y: scroll;
   z-index: 1;
+  padding: .2em;
+  box-shadow: 0px 2px 5px var(--mcmodder-color-background-dark2);
+  border-radius: calc(var(--mcmodder-width-radius) * .5);
 }
 .mcmodder-input-option {
   width: 100%;
   display: block;
   font-size: 1rem;
   padding: .2em var(--mcmodder-width-padding-2);
+  text-wrap: nowrap;
+  border-radius: calc(var(--mcmodder-width-radius) * .5);
 }
 .mcmodder-input-option.selected {
   background-color: var(--mcmodder-color-primary-transparent1);
