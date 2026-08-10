@@ -256,7 +256,8 @@ export class AdminInit extends McmodderInit {
                       const bracket = text.lastIndexOf(" (");
                       const name = text.slice(1, split);
                       const link = bracket === -1 ? text.slice(split + 1).trim() : text.slice(split + 1, bracket).trim();
-                      p.innerHTML = `[${ name }] <a target="_blank" href="${ link }">${ link }</a>`;
+                      const desc = bracket === -1 ? "" : ` (${ text.slice(bracket + 2, -1) })`;
+                      p.innerHTML = `[${ name }] <a target="_blank" href="${ link }">${ link }</a>${ desc }`;
                     });
                   };
                   addLink(prev);
