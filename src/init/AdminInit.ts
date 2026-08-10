@@ -6,6 +6,7 @@ import { McmodderInit } from "./Init";
 import { RelationCompareFrame } from "../widget/compare/RelationCompareFrame";
 import { PlatformCompareFrame } from "../widget/compare/PlatformCompareFrame";
 import { OredictCompareFrame } from "../widget/compare/OredictCompareFrame";
+import { InputList } from "../widget/InputList";
 
 export class AdminInit extends McmodderInit {
   private triggered: Set<string> = new Set;
@@ -206,16 +207,24 @@ export class AdminInit extends McmodderInit {
               //   itemID = McmodderUtils.abstractIDFromURL(itemLink, "item");
               // }
 
+              passButton = verifyFrame.find(passButtonSelector);
+              refundButton = verifyFrame.find(refundButtonSelector);
+              reasonInput = verifyFrame.find(reasonInputSelector);
+
               if (!this.parent.isMobileClient) {
-                passButton = verifyFrame.find(passButtonSelector);
-                refundButton = verifyFrame.find(refundButtonSelector);
-                reasonInput = verifyFrame.find(reasonInputSelector);
                 passButton.append(" " + McmodderUtils.keyToHTML(this.parent.utils.getConfig("keybindVerifyPass")));
                 refundButton.append(" " + McmodderUtils.keyToHTML(this.parent.utils.getConfig("keybindVerifyRefund")));
                 reasonInput.attr("placeholder", `填写附言或退回理由.... (按下 ${
                   McmodderUtils.keyToString(this.parent.utils.getConfig("keybindVerifyReason"))
                 } 以快速聚焦)`);
               }
+
+              new InputList(reasonInput, this.parent.utils, "verifyReasons", "；", true)
+              .getInstance()
+              .css("display", "inline")
+              .parent()
+              .next()
+              .css("margin-top", 0);
 
               // 正文对比
               verifyFrame.find("#mcmodder-text-area").remove();

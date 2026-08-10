@@ -1701,6 +1701,9 @@ body .arrow {
 .assistant-action-btns button {
   margin-right: var(--mcmodder-width-padding-3);
 }
+#verify-reason, #assistant-reason {
+  margin-bottom: 0;
+}
 #connect-frame .table > thead > tr > th,
 #connect-frame .table > tbody > tr > th,
 #connect-frame .table > tfoot > tr > th,
@@ -2369,14 +2372,25 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
 }
 .mcmodder-input-option {
   width: 100%;
-  display: block;
-  font-size: 1rem;
+  display: flex;
+  font-size: 14px;
   padding: .2em var(--mcmodder-width-padding-2);
   text-wrap: nowrap;
   border-radius: calc(var(--mcmodder-width-radius) * .5);
+  min-height: 24px;
+  color: var(--mcmodder-color-text);
+}
+.mcmodder-input-delete {
+  color: var(--mcmodder-color-text-dark2);
+  display: none;
+  margin-left: auto;
 }
 .mcmodder-input-option.selected {
   background-color: var(--mcmodder-color-primary-transparent1);
+}
+.mcmodder-input-option.selected .mcmodder-input-delete {
+  display: block;
+  padding-left: var(--mcmodder-width-padding-3);
 }
 .mcmodder-collapsible-container {
   border: 1px solid var(--mcmodder-color-primary);
