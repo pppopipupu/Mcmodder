@@ -37,13 +37,6 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { McmodderUtils } from "../../Utils";
 import type { ContextMenuEntry, ContextMenuExpose } from "../../widget/ContextMenu";
 
-/**
- * 右键上下文弹出菜单 —— 替代原 `McmodderContextMenu` 的手写 DOM 渲染。
- *
- * 事件入口（容器 contextmenu / 键盘）仍由 `ContextMenu.ts` 适配器持有，
- * 本组件负责菜单的渲染、选中态与定位动画。
- */
-
 export interface ContextMenuExposeInner {
   show: (x: number, y: number, activeIndexList: number[], entries: ContextMenuEntry[], event: unknown) => Promise<void>;
   hide: () => void;
@@ -51,9 +44,7 @@ export interface ContextMenuExposeInner {
 }
 
 const props = defineProps<{
-  /** 菜单定位所参照的容器元素 */
   container: HTMLElement;
-  /** 组件就绪后回调，向适配器暴露命令接口 */
   onReady?: (api: ContextMenuExpose) => void;
 }>();
 
@@ -66,9 +57,7 @@ const expandLeft = ref(false);
 const selected = ref(-1);
 const active = ref(false);
 
-/** 当前可见的菜单项 */
 const visibleItems = ref<ContextMenuEntry[]>([]);
-/** 可见项在原 items 列表中的索引（保持与旧 API 语义一致） */
 const activeIndexList = ref<number[]>([]);
 let contextmenuEvent: unknown = null;
 
@@ -114,7 +103,6 @@ async function show(
   await nextTick();
   root.value?.focus();
 
-  // 依据菜单与容器边界决定箭头方向（与原实现一致）
   if (_x && _y) {
     const menuRect = root.value?.getBoundingClientRect();
     const containerRect = props.container?.getBoundingClientRect();
@@ -158,7 +146,6 @@ function triggerEntry(entry: ContextMenuEntry | null) {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  // 快捷键直接触发
   for (const entry of visibleItems.value) {
     const shortcut = entry.shortcut;
     if (shortcut && McmodderUtils.isKeyMatch(shortcut, e)) {

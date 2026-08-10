@@ -1,6 +1,8 @@
 import { GM_openInTab } from "$";
 import { Mcmodder } from "../Mcmodder";
-import { InputRecommendation, ItemJsonFrameApplication, ItemJsonFrameConfig, McmodderItemData, McmodderItemList, McmodderTableRowSelection } from "../types";
+import { InputRecommendation, McmodderItemData, McmodderItemList, McmodderTableRowSelection } from "../types";
+import type { ItemJsonFrameApplication, ItemJsonFrameConfig } from "../types";
+export type { ItemJsonFrameApplication, ItemJsonFrameConfig, McmodderItemData };
 import { McmodderDetailedItemListRequestQueue } from "../requestqueue/DetailedItemRequestQueue";
 import { McmodderInferItemListRequestQueue } from "../requestqueue/InferRequestQueue";
 import { BatchCommand } from "../table/command/BatchCommand";
@@ -33,7 +35,6 @@ export interface McmodItemEditorData {
   "item-data": McmodItemEditorInnerData
 }
 
-/** 日志条目（ItemJsonFrame.vue 渲染用） */
 export interface ItemJsonFrameLogEntry {
   type: "info" | "warn" | "success" | "error" | "fatal" | "key";
   prefix: string;
@@ -41,30 +42,21 @@ export interface ItemJsonFrameLogEntry {
   time: string;
 }
 
-/** 从模组导入 JSON 时的任务配置（组件复选框状态） */
 export interface ItemJsonFrameTaskConfig {
   infer: boolean;
   geticon: boolean;
   getall: boolean;
 }
 
-/** Vue 框架组件向适配器暴露的命令接口 */
 export interface ItemJsonFrameExpose {
-  /** 刷新组件状态（文件列表、工具可见性等） */
   updateState(): void;
-  /** 渲染最新日志列表 */
   setLoggerEntries(entries: ItemJsonFrameLogEntry[]): void;
-  /** 打开“从现有模组资料导入JSON”面板 */
   showClassSearchPanel(): void;
-  /** 打开“从收纳贴获取JSON”面板 */
   showOnlinePanel(): void;
-  /** 设置导入任务执行按钮的忙碌状态 */
   setSearchButtonBusy(busy: boolean): void;
-  /** 展示在线文件列表与分页 */
   setOnlineFiles(files: ItemJsonFrameApplication[], maxPage: number): void;
 }
 
-/** 与 McmodderLoggerFrame 行为一致的日志桥接器（写入由 Vue 组件渲染） */
 export class ItemJsonFrameLogger implements McmodderLogger {
   private entries: ItemJsonFrameLogEntry[] = [];
   private listener?: (entries: ItemJsonFrameLogEntry[]) => void;
@@ -114,13 +106,6 @@ export class ItemJsonFrameLogger implements McmodderLogger {
   }
 }
 
-/**
- * 物品 JSON 构造界面 —— Vue 3 重构版适配层。
- *
- * 保留类作为公共 API（文件管理、数据抓取、同步/提交等业务逻辑），
- * 界面渲染委托给挂载于 Shadow DOM 内的 `ItemJsonFrame.vue`。
- * Vue 运行时仅在框架首次被实例化时才被懒加载。
- */
 export class ItemJsonFrame {
 
   protected getConfigName() {
@@ -257,7 +242,6 @@ export class ItemJsonFrame {
 
     this.updateSelection();
 
-    // 懒加载挂载 Vue 框架组件
     this.ensureMounted();
   }
 
@@ -280,7 +264,6 @@ export class ItemJsonFrame {
     return this.mountPromise;
   }
 
-  /** 通知组件刷新状态 */
   private notifyUpdate() {
     this.component?.updateState();
   }
@@ -323,7 +306,6 @@ export class ItemJsonFrame {
     });
   }
 
-  /* ---------------- 文件管理（原 JsonFrame 逻辑） ---------------- */
 
   updateSelection(selection = this.parent.utils.getAllConfig(this.getConfigName())) {
     this.selectionList = Object.keys(selection || {}).filter(e => e);
@@ -548,7 +530,6 @@ export class ItemJsonFrame {
     McmodderUtils.commonMsg("此功能尚未完工，敬请期待~");
   }
 
-  /* ---------------- 更多操作（自动链接数据库） ---------------- */
 
   more() {
     swal.fire({
@@ -582,7 +563,6 @@ export class ItemJsonFrame {
     if (linking.includes(this.activeFileName)) autolink.text("移出自动链接数据库");
   }
 
-  /* ---------------- 导出 ---------------- */
 
   exportJson(fileName: string) {
     if (!this.isAvailableFileName(fileName)) return false;
@@ -647,7 +627,6 @@ export class ItemJsonFrame {
     return entry as unknown as McmodderItemData;
   }
 
-  /* ---------------- 从模组导入 JSON ---------------- */
 
   getTypeRecommendations(classID: number): InputRecommendation[] {
     const result: InputRecommendation[] = [];
@@ -974,7 +953,6 @@ export class ItemJsonFrame {
     return itemList;
   }
 
-  /* ---------------- 收纳贴在线文件 ---------------- */
 
   async searchOnlineFiles() {
     if (!this.parent.currentUID) {
@@ -1040,7 +1018,6 @@ export class ItemJsonFrame {
     this.importFromText(text, name);
   }
 
-  /* ---------------- 行同步 / 提交 ---------------- */
 
   async preSyncRow(selection: number | number[]) {
     if (!(selection instanceof Array)) selection = [selection];

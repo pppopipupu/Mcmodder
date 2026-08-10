@@ -1,188 +1,221 @@
 <template>
   <div class="mcmodder-settings-panel">
-    <template v-for="entry in entries" :key="entry.key">
-      <div class="center-setting-block">
-        <div class="setting-item">
-          <!-- 复选框 -->
-          <div v-if="entry.data.type === McmodderInputType.CHECKBOX" class="checkbox">
-            <input
-              type="checkbox"
-              :id="entry.inputId"
-              :checked="!!getValue(entry.key)"
-              @change="commitValue(entry.key, ($event.target as HTMLInputElement).checked)"
-            >
-            <label :for="entry.inputId">{{ entry.data.title }}</label>
+    <Transition name="modal-fade">
+      <div v-if="open" class="mcmodder-settings-modal">
+        <div class="modal-mask" @click="close" />
+        <Transition name="modal-pop">
+          <div class="modal-window" role="dialog" aria-modal="true">
+            <header class="modal-header">
+              <span class="modal-title">Mcmodder 脚本设置 <span class="modal-version">v{{ version }}</span></span>
+              <div class="modal-search">
+                <i class="fa fa-search" />
+                <input v-model="query" placeholder="搜索设置..." />
+                <button v-if="query" class="search-clear" @click="query = ''">×</button>
+              </div>
+              <button class="modal-close" @click="close" aria-label="关闭">×</button>
+            </header>
+
+            <div class="modal-body">
+              <aside class="modal-sidebar">
+                <button
+                  v-for="g in groups"
+                  :key="g.id"
+                  class="sidebar-item"
+                  :class="{ active: !query && activeGroup === g.id }"
+                  @click="selectGroup(g.id)"
+                >
+                  <span class="sidebar-label">{{ g.label }}</span>
+                  <span class="sidebar-count">{{ sidebarCount(g) }}</span>
+                </button>
+              </aside>
+
+              <main class="modal-content">
+                <template v-if="displayedGroups.length">
+                  <div v-for="g in displayedGroups" :key="g.id" class="group-block">
+                    <h3 v-if="query || g.sections.length > 1" class="group-heading">{{ g.label }}</h3>
+                    <div v-for="s in g.sections" :key="s.id" class="group-card">
+                      <div class="group-title-row">
+                        <h4 class="group-title" v-html="highlightText(s.title)" />
+                        <template v-if="s.id === 'update'">
+                          <button class="btn btn-accent" id="mcmodder-update-check-manual" @click="checkUpdate">立即检查更新</button>
+                          <span :ref="el => (timerSlots.autoCheckUpdate = el as HTMLElement | null)" class="mcmodder-settings-timer-slot" />
+                        </template>
+                      </div>
+
+                      <div v-if="s.id === 'data'" ref="dataContainer" class="data-manager" />
+                      <div v-for="entry in s.keys" :key="entry" class="setting-item">
+                        <div class="setting-info">
+                          <div class="setting-title-row">
+                            <span class="title" v-html="highlightText(entriesMap[entry]?.data.title ?? '')" />
+                          </div>
+                          <p class="text-muted" v-html="highlightHtml(entriesMap[entry]?.description ?? '')" />
+                        </div>
+                        <div class="setting-control">
+                          <label v-if="entryData(entry)?.type === McmodderInputType.CHECKBOX" class="switch">
+                            <input
+                              type="checkbox"
+                              :id="`settings-${ entry }`"
+                              :checked="!!getValue(entry)"
+                              @change="commitValue(entry, ($event.target as HTMLInputElement).checked)"
+                            >
+                            <span class="switch-slider" />
+                          </label>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.NUMBER">
+                            <div class="mcmodder-numberinput-container">
+                              <input
+                                class="form-control"
+                                :placeholder="entryData(entry)?.title + '..'"
+                                :value="formatNumber(getValue(entry))"
+                                @change="commitNumber(entry, $event)"
+                              >
+                            </div>
+                          </template>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.SLIDER">
+                            <div class="mcmodder-numberinput-container">
+                              <input
+                                class="form-control"
+                                :placeholder="entryData(entry)?.title + '..'"
+                                :value="formatNumber(sliderLive[entry] ?? getValue(entry))"
+                                @change="commitNumber(entry, $event)"
+                              >
+                              <div class="mcmodder-slider-container" :ref="el => (sliderBars[entry] = el as HTMLElement)">
+                                <div
+                                  class="mcmodder-slider-bar"
+                                  @mousedown="onSliderBarMousedown(entry, $event)"
+                                  @mousemove="onSliderMousemove(entry, $event)"
+                                  @mouseup="onSliderMouseup(entry)"
+                                >
+                                  <div
+                                    class="mcmodder-slider-tap"
+                                    :class="{ focus: sliderDraggingKey === entry }"
+                                    :style="{ left: getSliderRate(entry) * 100 + '%' }"
+                                    @mousedown="onSliderTapMousedown(entry, $event)"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </template>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.TEXT">
+                            <input
+                              class="form-control"
+                              :value="getValue(entry)"
+                              @change="commitText(entry, $event)"
+                            >
+                          </template>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.COLORPICKER">
+                            <input
+                              class="form-control mcmodder-colorpicker"
+                              type="color"
+                              :value="getValue(entry)"
+                              @change="commitValue(entry, ($event.target as HTMLInputElement).value)"
+                            >
+                          </template>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.KEYBIND">
+                            <input
+                              class="form-control mcmodder-keybind-input"
+                              :value="keybindDisplay(entry)"
+                              @focus="keybindOnFocus(entry)"
+                              @keydown="keybindOnKeydown(entry, $event)"
+                              @keyup="keybindOnKeyup(entry, $event)"
+                              @blur="keybindOnBlur(entry)"
+                            >
+                          </template>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.DROPDOWN_MENU">
+                            <select
+                              class="mcmodder-select"
+                              :value="getValue(entry)"
+                              @change="commitValue(entry, Number(($event.target as HTMLSelectElement).value))"
+                            >
+                              <option
+                                v-for="(label, num) in entryData(entry)?.range"
+                                :key="num"
+                                :value="num"
+                              >{{ label }}{{ Number(num) === entryData(entry)?.value ? " (默认)" : "" }}</option>
+                            </select>
+                          </template>
+
+                          <template v-else-if="entryData(entry)?.type === McmodderInputType.DROPDOWN_TEXT_MENU">
+                            <div class="mcmodder-input-container">
+                              <input
+                                class="form-control"
+                                :value="getValue(entry)"
+                                @focus="openSuggestions(entry)"
+                                @input="filterSuggestions(entry, $event)"
+                                @blur="closeSuggestions(entry)"
+                              >
+                              <div v-if="suggestionOpen[entry]" class="mcmodder-input-list">
+                                <a
+                                  v-for="(rec, i) in (entryData(entry)?.recommendation || []).map(normalizeRecommendation)"
+                                  :key="i"
+                                  href="javascript:void(0)"
+                                  @mousedown.prevent="commitSuggestion(entry, rec.value)"
+                                >
+                                  <span v-if="rec.html" v-html="rec.html" />
+                                  <span v-else>{{ rec.value }}{{ isDefaultRecommendation(entry, rec.value) ? " (默认)" : "" }}</span>
+                                </a>
+                                <span v-if="!(entryData(entry)?.recommendation || []).length" class="empty">没有匹配的推荐项...</span>
+                              </div>
+                            </div>
+                          </template>
+
+                          <template v-if="entry === 'useSupabase' && !!getValue('useSupabase')">
+                            <button class="btn btn-accent" id="mcmodder-auth-manual" :disabled="authing" @click="manualAuth">
+                              {{ authing ? "认证中..." : "立即认证" }}
+                            </button>
+                            <span class="mcmodder-auth-user" :class="authUserClass">{{ authUserName }}</span>
+                            <span class="mcmodder-auth-state" :class="authStateClass">
+                              <i :class="authStateIcon" />
+                            </span>
+                          </template>
+                        </div>
+                      </div>
+
+                      <div v-if="s.id === 'cloud' && !!getValue('useSupabase')" class="supabase-sync-block">
+                        <span class="supabase-sync-hint">将当前全部配置保存至云端，或从云端拉取并覆盖本地配置：</span>
+                        <div class="supabase-sync-buttons">
+                          <button class="btn" :disabled="syncing" @click="syncUpload">
+                            <i class="fa fa-cloud-upload" />
+                            保存所有配置数据至云端
+                          </button>
+                          <button class="btn" :disabled="syncing" @click="syncDownload">
+                            <i class="fa fa-cloud-download" />
+                            从云端同步所有配置数据
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="no-result">未找到匹配的设置项</div>
+              </main>
+            </div>
           </div>
-
-          <!-- 数字输入 -->
-          <template v-else-if="entry.data.type === McmodderInputType.NUMBER">
-            <span class="title">{{ entry.data.title }}:</span>
-            <div class="mcmodder-numberinput-container">
-              <input
-                class="form-control"
-                :placeholder="entry.data.title + '..'"
-                :value="formatNumber(getValue(entry.key))"
-                @change="commitNumber(entry, $event)"
-              >
-            </div>
-          </template>
-
-          <!-- 滑块 + 数字输入 -->
-          <template v-else-if="entry.data.type === McmodderInputType.SLIDER">
-            <span class="title">{{ entry.data.title }}:</span>
-            <div class="mcmodder-numberinput-container">
-              <input
-                class="form-control"
-                :placeholder="entry.data.title + '..'"
-                :value="formatNumber(sliderLive[entry.key] ?? getValue(entry.key))"
-                @change="commitNumber(entry, $event)"
-              >
-              <div class="mcmodder-slider-container" :ref="el => (sliderBars[entry.key] = el as HTMLElement)">
-                <div
-                  class="mcmodder-slider-bar"
-                  @mousedown="onSliderBarMousedown(entry, $event)"
-                  @mousemove="onSliderMousemove(entry, $event)"
-                  @mouseup="onSliderMouseup(entry)"
-                >
-                  <div
-                    class="mcmodder-slider-tap"
-                    :class="{ focus: sliderDraggingKey === entry.key }"
-                    :style="{ left: getSliderRate(entry) * 100 + '%' }"
-                    @mousedown="onSliderTapMousedown(entry, $event)"
-                  />
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- 文本输入 -->
-          <template v-else-if="entry.data.type === McmodderInputType.TEXT">
-            <span class="title">{{ entry.data.title }}:</span>
-            <input
-              class="form-control"
-              :value="getValue(entry.key)"
-              @change="commitText(entry, $event)"
-            >
-          </template>
-
-          <!-- 颜色选择 -->
-          <template v-else-if="entry.data.type === McmodderInputType.COLORPICKER">
-            <span class="title">{{ entry.data.title }}:</span>
-            <input
-              class="form-control mcmodder-colorpicker"
-              type="color"
-              :value="getValue(entry.key)"
-              @change="commitValue(entry.key, ($event.target as HTMLInputElement).value)"
-            >
-          </template>
-
-          <!-- 快捷键录制 -->
-          <template v-else-if="entry.data.type === McmodderInputType.KEYBIND">
-            <span class="title">{{ entry.data.title }}:</span>
-            <input
-              class="form-control mcmodder-keybind-input"
-              :value="keybindDisplay(entry.key)"
-              @focus="keybindOnFocus(entry.key)"
-              @keydown="keybindOnKeydown(entry.key, $event)"
-              @keyup="keybindOnKeyup(entry.key, $event)"
-              @blur="keybindOnBlur(entry.key)"
-            >
-          </template>
-
-          <!-- 下拉菜单 -->
-          <template v-else-if="entry.data.type === McmodderInputType.DROPDOWN_MENU">
-            <span class="title">{{ entry.data.title }}:</span>
-            <select
-              class="mcmodder-select"
-              :value="getValue(entry.key)"
-              @change="commitValue(entry.key, Number(($event.target as HTMLSelectElement).value))"
-            >
-              <option
-                v-for="(label, num) in entry.data.range"
-                :key="num"
-                :value="num"
-              >{{ label }}{{ Number(num) === entry.data.value ? " (默认)" : "" }}</option>
-            </select>
-          </template>
-
-          <!-- 带推荐列表的文本输入 -->
-          <template v-else-if="entry.data.type === McmodderInputType.DROPDOWN_TEXT_MENU">
-            <span class="title">{{ entry.data.title }}:</span>
-            <div class="mcmodder-input-container">
-              <input
-                class="form-control"
-                :value="getValue(entry.key)"
-                @focus="openSuggestions(entry)"
-                @input="filterSuggestions(entry, $event)"
-                @blur="closeSuggestions(entry)"
-              >
-              <div v-if="suggestionOpen[entry.key]" class="mcmodder-input-list">
-                <a
-                  v-for="(rec, i) in suggestionList[entry.key] || []"
-                  :key="i"
-                  href="javascript:void(0)"
-                  @mousedown.prevent="commitSuggestion(entry, rec.value)"
-                >
-                  <span v-if="rec.html" v-html="rec.html" />
-                  <span v-else>{{ rec.value }}{{ isDefaultRecommendation(entry, rec.value) ? " (默认)" : "" }}</span>
-                </a>
-                <span v-if="!(suggestionList[entry.key] || []).length" class="empty">没有匹配的推荐项...</span>
-              </div>
-            </div>
-          </template>
-
-          <!-- 立即检查更新（跟随 autoCheckUpdate 配置项） -->
-          <template v-if="entry.key === 'autoCheckUpdate'">
-            <button class="btn" id="mcmodder-update-check-manual" @click="checkUpdate">立即检查更新</button>
-            <span :ref="el => (timerSlots.autoCheckUpdate = el as HTMLElement | null)" class="mcmodder-settings-timer-slot" />
-          </template>
-
-          <!-- Supabase 用户认证（跟随 useSupabase 配置项） -->
-          <template v-if="entry.key === 'useSupabase' && !!getValue('useSupabase')">
-            <button class="btn" id="mcmodder-auth-manual" :disabled="authing" @click="manualAuth">
-              {{ authing ? "认证中..." : "立即认证" }}
-            </button>
-            <span>当前已绑定: </span>
-            <span class="mcmodder-auth-user" :class="authUserClass">{{ authUserName }}</span>
-            <span class="mcmodder-auth-state" :class="authStateClass">
-              <i :class="authStateIcon" />
-            </span>
-          </template>
-        </div>
-        <p class="text-muted" v-html="entry.description" />
-
-        <!-- 云端同步按钮组（跟随 useSupabase 配置项） -->
-        <div v-if="entry.key === 'useSupabase' && !!getValue('useSupabase')" class="supabase-sync-block">
-          <button class="btn" :disabled="syncing" @click="syncUpload">
-            <i class="fa fa-cloud-upload" />
-            保存所有配置数据至云端
-          </button>
-          <button class="btn" :disabled="syncing" @click="syncDownload">
-            <i class="fa fa-cloud-download" />
-            从云端同步所有配置数据
-          </button>
-        </div>
+        </Transition>
       </div>
-    </template>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { GM_getValue, GM_setValue } from "$";
-import { computed, onMounted, reactive, ref, watch } from "vue";
-import type { Mcmodder } from "../../Mcmodder";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { Mcmodder } from "../../Mcmodder";
 import { McmodderConfigUtils, McmodderInputType } from "../../config/ConfigUtils";
-import type { InputSimplifiedRecommendation, InputValueNumericRange, McmodderConfigData, McmodderKeyData, SupabaseAuthenticatorResponse, SupabaseSyncSettingsResponse } from "../../types";
+import { McmodderConfigResourceInteractor } from "../../config/ConfigResourceInteractor";
+import { McmodderConfigResourceFileListInteractor } from "../../config/ConfigResouceFileListInteractor";
+import type { InputSimplifiedRecommendation, InputValueNumericRange, McmodderClassRelationData, McmodderConfigData, McmodderKeyData, McmodderRankDisplayData, McmodderRankStorageData, McmodderSplashData, SupabaseAuthenticatorResponse, SupabaseSyncSettingsResponse } from "../../types";
+import { McmodderTable } from "../../table/Table";
 import { McmodderUtils } from "../../Utils";
+import { McmodderValues } from "../../Values";
 import { McmodderTimer } from "../../widget/Timer";
 import { useConfig } from "../composables/useConfig";
-
-/**
- * 全局设置面板 —— Vue 3 重构版。
- *
- * 替代原 `CenterSettingInit` 中基于 `McmodderConfigInteractor` 手动拼接的
- * 配置表单，通过 `useConfig()` 响应式绑定 GM 存储，配置变更实时联动 UI。
- */
+import { OPEN_SETTINGS_EVENT } from "../mount";
 
 const props = defineProps<{
   parent: Mcmodder;
@@ -192,37 +225,226 @@ const parent = props.parent;
 const utils = parent.utils;
 const cfgutils = parent.cfgutils;
 
-const { config, get, set } = useConfig("mcmodderSettings");
-
-interface SettingsEntry {
-  key: string;
-  data: McmodderConfigData;
-  inputId: string;
-  description: string;
-}
+const { get, set } = useConfig("mcmodderSettings");
 
 const permission = utils.getProfile("permission");
 
-const entries = computed<SettingsEntry[]>(() => {
-  const list: SettingsEntry[] = [];
+const entries = computed<string[]>(() => {
+  const list: string[] = [];
   Object.keys(cfgutils.data).forEach(key => {
     const data = cfgutils.data[key];
     if (data.permission && permission < data.permission) return;
     if (data.type === McmodderInputType.KEYBIND && parent.isMobileClient) return;
-    list.push({
-      key,
-      data,
-      inputId: `settings-${ key }`,
-      description: buildDescription(data)
-    });
+    list.push(key);
   });
   return list;
 });
 
+function entryData(key: string): McmodderConfigData | undefined {
+  return cfgutils.data[key];
+}
+
+interface SettingsSection {
+  id: string;
+  title: string;
+  keys: string[];
+}
+
+interface SettingsGroup {
+  id: string;
+  label: string;
+  sections: SettingsSection[];
+}
+
+const GROUP_DEFS: SettingsGroup[] = [
+  {
+    id: "appearance", label: "外观",
+    sections: [
+      { id: "theme", title: "主题样式", keys: ["themeColor1", "themeColor2", "themeColor3", "customFont", "disableGradient", "adaptableNightMode", "bbsNightMode", "forceV4", "disableAutoStyleFix", "moveAds"] },
+      { id: "background", title: "背景", keys: ["defaultBackground", "defaultNightBackground", "backgroundAlpha", "textShadowAlpha", "radiusRatio"] },
+    ]
+  },
+  {
+    id: "home", label: "主页",
+    sections: [
+      { id: "home", title: "主页功能", keys: ["almanacs", "enableSplashTracker", "splashStyle", "splashFontUrl", "enableLive2D", "enableAprilFools", "autoCheckin", "centerMainExpand", "byteChart", "maxByteColorValue", "expCalculator", "rememberVisited", "rememberVisitedMods", "favUserDisplayStyle", "freezeAdvancements", "customAdvancements"] },
+    ]
+  },
+  {
+    id: "editor", label: "编辑与资料",
+    sections: [
+      { id: "editor", title: "编辑与表格", keys: ["editorAutoResize", "noSubmitWarningDelay", "autoSaveFix", "fastSubmitFix", "editorStats", "enableStructureEditor", "autoFoldTable", "tableFix", "tableThemeColor", "tableLeftAlign", "classAddHelper", "tabSelectorInfo", "rememberModRelation", "imageLocalizedCheck", "hoverDescription", "hoverImage", "linkCheck", "linkMark"] },
+      { id: "mod", title: "模组与资料", keys: ["fastCopyName", "compactSupportedVersions", "disableClassDataTypesetting", "versionHelper", "versionEditorHelper", "subscribeDelay", "subscribeComment", "compactedChild", "advancedRanklist", "advancedOredictPage", "removePostProtection", "gtceuIntegration"] },
+    ]
+  },
+  {
+    id: "community", label: "社区",
+    sections: [
+      { id: "comment", title: "评论区", keys: ["anonymousUknowtoomuch", "unlockComment", "ignoreEmptyLine", "replyLink", "missileAlert", "missileAlertHeight", "commentExpandHeight", "userBlacklist", "alwaysNotify"] },
+      { id: "moderation", title: "审核管理", keys: ["autoVerifyDelay", "splitScreenOnVerify", "itemListStylePreview", "itemListStyleFix", "keybindVerifyPass", "keybindVerifyRefund", "keybindVerifyReason", "fastUrge", "compactedVerifylist", "compactedVerifyEntry", "autoExpandPage", "multiDiffCompare"] },
+    ]
+  },
+  {
+    id: "cloud", label: "云端与更新",
+    sections: [
+      { id: "cloud", title: "云端服务", keys: ["useSupabase", "fetchCustomSplashes", "customSplashRate", "supabaseSplash", "supabaseByteChart"] },
+      { id: "update", title: "更新检查", keys: ["autoCheckUpdate"] },
+    ]
+  },
+  {
+    id: "other", label: "其他",
+    sections: [
+      { id: "keybind", title: "快捷键", keys: ["keybindFastLink", "keybindFastSubmit"] },
+    ]
+  },
+  {
+    id: "data", label: "数据管理",
+    sections: [
+      { id: "data", title: "数据管理", keys: [] },
+    ]
+  },
+];
+
+const groups = computed<SettingsGroup[]>(() => {
+  const visible = new Set(entries.value);
+  const keepSection = (s: SettingsSection) => s.id === "data" || s.keys.some(k => visible.has(k));
+  const list = GROUP_DEFS
+    .map(g => ({
+      ...g,
+      sections: g.sections
+        .map(s => ({ ...s, keys: s.keys.filter(k => visible.has(k)) }))
+        .filter(keepSection)
+    }))
+    .filter(g => g.sections.length);
+  const covered = new Set(list.flatMap(g => g.sections.flatMap(s => s.keys)));
+  const rest = entries.value.filter(k => !covered.has(k));
+  if (rest.length) {
+    const other = list.find(g => g.id === "other");
+    if (other) other.sections.push({ id: "other", title: "其他", keys: rest });
+    else list.push({ id: "other", label: "其他", sections: [{ id: "other", title: "其他", keys: rest }] });
+  }
+  return list;
+});
+
+const activeGroup = ref(groups.value[0]?.id ?? "");
+const open = ref(true);
+const query = ref("");
+const version = McmodderValues.mcmodderVersion;
+
+const entriesMap = computed<Record<string, SettingsEntryLike>>(() => {
+  const map: Record<string, SettingsEntryLike> = {};
+  entries.value.forEach(key => {
+    map[key] = { key, data: cfgutils.data[key], description: buildDescription(cfgutils.data[key]) };
+  });
+  return map;
+});
+
+function selectGroup(id: string) {
+  activeGroup.value = id;
+  query.value = "";
+}
+
+function matchesEntry(key: string) {
+  const e = entriesMap.value[key];
+  if (!e) return false;
+  const q = query.value.trim().toLowerCase();
+  return !q
+    || key.toLowerCase().includes(q)
+    || e.data.title.toLowerCase().includes(q)
+    || e.description.toLowerCase().includes(q);
+}
+
+function sidebarCount(g: SettingsGroup) {
+  if (!query.value.trim()) return g.sections.reduce((n, s) => n + s.keys.length, 0);
+  return g.sections.reduce((n, s) => n + s.keys.filter(matchesEntry).length, 0);
+}
+
+const displayedGroups = computed<SettingsGroup[]>(() => {
+  const filterSections = (g: SettingsGroup): SettingsGroup => ({
+    ...g,
+    sections: g.sections
+      .map(s => ({ ...s, keys: s.keys.filter(matchesEntry) }))
+      .filter(s => s.id === "data" || s.keys.length)
+  });
+  if (query.value.trim()) return groups.value.map(filterSections).filter(g => g.sections.length);
+  const cur = groups.value.find(g => g.id === activeGroup.value) ?? groups.value[0];
+  return cur ? [cur] : [];
+});
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const escapeHtml = (s: string) => s.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string));
+
+function highlightMarkStyle() {
+  const rs = getComputedStyle(document.documentElement);
+  const bg = rs.getPropertyValue("--mcmodder-color-accent-transparent2").trim();
+  const fg = rs.getPropertyValue("--mcmodder-color-accent").trim();
+  return `background-color:${ bg || "rgba(172, 219, 236, .35)" };color:${ fg || "#58b6d8" };border-radius:2px;padding:0 1px`;
+}
+
+function highlightText(text: string): string {
+  const q = query.value.trim();
+  if (!q) return text;
+  return escapeHtml(text).replace(new RegExp(`(${ escapeHtml(escapeRegExp(q)) })`, "gi"), `<mark style="${ highlightMarkStyle() }">$1</mark>`);
+}
+
+function highlightHtml(html: string): string {
+  const q = query.value.trim();
+  if (!q) return html;
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+  const lowerQ = q.toLowerCase();
+  const markStyle = highlightMarkStyle();
+  textNodes.forEach(t => {
+    const parts = t.nodeValue?.split(new RegExp(`(${ escapeRegExp(q) })`, "i")) ?? [""];
+    if (parts.length <= 1) return;
+    const frag = document.createDocumentFragment();
+    parts.forEach(p => {
+      if (p && p.toLowerCase() === lowerQ) {
+        const mark = document.createElement("mark");
+        mark.setAttribute("style", markStyle);
+        mark.textContent = p;
+        frag.appendChild(mark);
+      } else if (p) {
+        frag.appendChild(document.createTextNode(p));
+      }
+    });
+    t.parentNode?.replaceChild(frag, t);
+  });
+  return div.innerHTML;
+}
+
+function openModal() {
+  open.value = true;
+  document.body.style.overflow = "hidden";
+}
+
+function close() {
+  open.value = false;
+  query.value = "";
+  document.body.style.overflow = "";
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") close();
+}
+
+interface SettingsEntryLike {
+  key: string;
+  data: McmodderConfigData;
+  description: string;
+}
+
 function getValue(key: string) {
   const value = get(key);
   if (value !== undefined) return value;
-  return cfgutils.data[key]?.value ?? McmodderConfigUtils.defaultValue[cfgutils.data[key]?.type ?? McmodderInputType.CHECKBOX];
+  const type = (cfgutils.data[key]?.type ?? McmodderInputType.CHECKBOX) as McmodderInputType;
+  return cfgutils.data[key]?.value ?? McmodderConfigUtils.defaultValue[type];
 }
 
 function commitValue(key: string, value: any) {
@@ -232,19 +454,19 @@ function commitValue(key: string, value: any) {
 function formatNumber(value: any) {
   if (value === undefined || value === null || value === "") return "";
   const num = Number(value);
-  return isNaN(num) ? "" : Number(num.toFixed(10));
+  return isNaN(num) ? "" : String(Number(num.toFixed(10)));
 }
 
-function getRange(entry: SettingsEntry): InputValueNumericRange {
-  const range = entry.data.range as InputValueNumericRange | undefined;
+function getRange(key: string): InputValueNumericRange {
+  const range = entryData(key)?.range as InputValueNumericRange | undefined;
   return range || [null, null];
 }
 
-function commitNumber(entry: SettingsEntry, e: Event) {
+function commitNumber(key: string, e: Event) {
   const input = e.target as HTMLInputElement;
   const newValue = Number(input.value);
-  const current = getValue(entry.key);
-  const [min, max] = getRange(entry);
+  const current = getValue(key);
+  const [min, max] = getRange(key);
   const showError = (msg: string) => {
     McmodderUtils.commonMsg(msg, false);
     input.value = formatNumber(current);
@@ -262,42 +484,41 @@ function commitNumber(entry: SettingsEntry, e: Event) {
     showError(`您输入的数值 (${ newValue.toLocaleString() }) 高于允许的最大值 (${ max.toLocaleString() })，请重新设置~`);
     return;
   }
-  commitValue(entry.key, newValue);
+  commitValue(key, newValue);
 }
 
-function commitText(entry: SettingsEntry, e: Event) {
+function commitText(key: string, e: Event) {
   const input = e.target as HTMLInputElement;
   const newValue = input.value.trim();
-  if (newValue === getValue(entry.key)) {
-    input.value = getValue(entry.key);
+  if (newValue === getValue(key)) {
+    input.value = getValue(key);
     return;
   }
-  commitValue(entry.key, newValue);
+  commitValue(key, newValue);
 }
 
-/* ---------------- 滑块 ---------------- */
 
 const sliderBars = reactive<Record<string, HTMLElement | null>>({});
 const sliderLive = reactive<Record<string, number>>({});
 const sliderDraggingKey = ref<string | null>(null);
 let sliderDragOffset = 0;
 
-function getSliderRange(entry: SettingsEntry): [number, number] {
-  const [min, max] = getRange(entry);
+function getSliderRange(key: string): [number, number] {
+  const [min, max] = getRange(key);
   return [min ?? 0, max ?? 1];
 }
 
-function getSliderRate(entry: SettingsEntry) {
-  const [min, max] = getRange(entry);
+function getSliderRate(key: string) {
+  const [min, max] = getRange(key);
   if (min == null || max == null || max <= min) return 0;
-  const value = sliderLive[entry.key] ?? getValue(entry.key);
+  const value = sliderLive[key] ?? getValue(key);
   return McmodderUtils.clamp((Number(value) - min) / (max - min));
 }
 
-function onSliderTapMousedown(entry: SettingsEntry, e: MouseEvent) {
-  const bar = sliderBars[entry.key];
+function onSliderTapMousedown(key: string, e: MouseEvent) {
+  const bar = sliderBars[key];
   if (!bar) return;
-  sliderDraggingKey.value = entry.key;
+  sliderDraggingKey.value = key;
   const tap = e.currentTarget as HTMLElement;
   const tapCenter = tap.getBoundingClientRect().left - bar.getBoundingClientRect().left + tap.getBoundingClientRect().width / 2;
   sliderDragOffset = e.screenX - tapCenter - bar.getBoundingClientRect().left;
@@ -305,31 +526,31 @@ function onSliderTapMousedown(entry: SettingsEntry, e: MouseEvent) {
   e.preventDefault();
 }
 
-function onSliderBarMousedown(entry: SettingsEntry, e: MouseEvent) {
-  sliderDraggingKey.value = entry.key;
+function onSliderBarMousedown(key: string, e: MouseEvent) {
+  sliderDraggingKey.value = key;
   sliderDragOffset = 0;
   e.preventDefault();
-  updateSliderFromMouse(entry, e);
+  updateSliderFromMouse(key, e);
 }
 
-function onSliderMousemove(entry: SettingsEntry, e: MouseEvent) {
-  if (sliderDraggingKey.value !== entry.key) return;
-  updateSliderFromMouse(entry, e);
+function onSliderMousemove(key: string, e: MouseEvent) {
+  if (sliderDraggingKey.value !== key) return;
+  updateSliderFromMouse(key, e);
 }
 
-function onSliderMouseup(entry: SettingsEntry) {
-  if (sliderDraggingKey.value !== entry.key) return;
+function onSliderMouseup(key: string) {
+  if (sliderDraggingKey.value !== key) return;
   sliderDraggingKey.value = null;
-  const value = sliderLive[entry.key];
-  if (value !== undefined && value !== Number(getValue(entry.key))) {
-    commitValue(entry.key, value);
+  const value = sliderLive[key];
+  if (value !== undefined && value !== Number(getValue(key))) {
+    commitValue(key, value);
   }
 }
 
-function updateSliderFromMouse(entry: SettingsEntry, e: MouseEvent) {
-  const bar = sliderBars[entry.key];
+function updateSliderFromMouse(key: string, e: MouseEvent) {
+  const bar = sliderBars[key];
   if (!bar) return;
-  const [min, max] = getSliderRange(entry);
+  const [min, max] = getSliderRange(key);
   const barLeft = bar.getBoundingClientRect().left;
   const barWidth = bar.getBoundingClientRect().width;
   const dragPos = e.screenX + sliderDragOffset - barLeft;
@@ -337,10 +558,9 @@ function updateSliderFromMouse(entry: SettingsEntry, e: MouseEvent) {
   const precision = max - min === 1 ? 0.01 : 1;
   const rawValue = min + (max - min) * rate;
   const value = Math.round(rawValue / precision) * precision;
-  sliderLive[entry.key] = value;
+  sliderLive[key] = value;
 }
 
-/* ---------------- 快捷键录制 ---------------- */
 
 interface KeybindState {
   lastData?: McmodderKeyData;
@@ -413,7 +633,6 @@ function keybindOnBlur(key: string) {
   commitValue(key, {});
 }
 
-/* ---------------- 推荐列表 ---------------- */
 
 const suggestionOpen = reactive<Record<string, boolean>>({});
 const suggestionList = reactive<Record<string, InputSimplifiedRecommendation[]>>({});
@@ -423,36 +642,35 @@ function normalizeRecommendation(rec: InputSimplifiedRecommendation): { html?: s
   return { html: rec.html, value: rec.value };
 }
 
-function isDefaultRecommendation(entry: SettingsEntry, value: string) {
-  return entry.data.value === value;
+function isDefaultRecommendation(key: string, value: string) {
+  return entryData(key)?.value === value;
 }
 
-function openSuggestions(entry: SettingsEntry) {
-  suggestionOpen[entry.key] = true;
-  filterSuggestions(entry, { target: { value: getValue(entry.key) } } as unknown as Event);
+function openSuggestions(key: string) {
+  suggestionOpen[key] = true;
+  filterSuggestions(key, { target: { value: getValue(key) } } as unknown as Event);
 }
 
-function filterSuggestions(entry: SettingsEntry, e: Event) {
+function filterSuggestions(key: string, e: Event) {
   const text = String((e.target as HTMLInputElement).value || "").trim().toLowerCase();
-  const list = (entry.data.recommendation || []).filter(rec => {
+  const list = (entryData(key)?.recommendation || []).filter(rec => {
     const { value } = normalizeRecommendation(rec);
     return !text || value.toLowerCase().includes(text);
   });
-  suggestionList[entry.key] = list;
+  suggestionList[key] = list;
 }
 
-function closeSuggestions(entry: SettingsEntry) {
+function closeSuggestions(key: string) {
   window.setTimeout(() => {
-    suggestionOpen[entry.key] = false;
+    suggestionOpen[key] = false;
   }, 150);
 }
 
-function commitSuggestion(entry: SettingsEntry, value: string) {
-  suggestionOpen[entry.key] = false;
-  commitValue(entry.key, value);
+function commitSuggestion(key: string, value: string) {
+  suggestionOpen[key] = false;
+  commitValue(key, value);
 }
 
-/* ---------------- 更新检查 ---------------- */
 
 const timerSlots = reactive<Record<string, HTMLElement | null>>({});
 let updateTimer: McmodderTimer | undefined;
@@ -473,7 +691,6 @@ function refreshUpdateTimer() {
   }
 }
 
-/* ---------------- Supabase 认证与同步 ---------------- */
 
 const authing = ref(false);
 const syncing = ref(false);
@@ -603,7 +820,6 @@ async function syncDownload() {
   }
 }
 
-/* ---------------- 描述文本 ---------------- */
 
 function buildDescription(data: McmodderConfigData) {
   if (data.type === McmodderInputType.DROPDOWN_MENU) return data.description;
@@ -626,241 +842,922 @@ function buildDescription(data: McmodderConfigData) {
   return `${ data.description }${ appendix }`;
 }
 
-/* ---------------- 生命周期 ---------------- */
 
 onMounted(() => {
   refreshAuthState();
   refreshUpdateTimer();
+  window.addEventListener("keydown", onKeydown);
+  document.addEventListener(OPEN_SETTINGS_EVENT, onOpenSettingsEvent);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeydown);
+  document.removeEventListener(OPEN_SETTINGS_EVENT, onOpenSettingsEvent);
+  document.body.style.overflow = "";
+});
+
+function onOpenSettingsEvent() {
+  openModal();
+}
 
 watch(
   () => getValue("autoCheckUpdate"),
   () => refreshUpdateTimer()
 );
+
+watch(
+  () => open.value && activeGroup.value === "data",
+  async visible => {
+    if (!visible) return;
+    await nextTick();
+    mountDataManager();
+  }
+);
+
+
+const dataContainer = ref<HTMLElement | null>(null);
+let dataManagers: McmodderConfigResourceInteractor<any>[] | null = null;
+
+/** 管理器实例与实例内一次性绑定（数据与事件不随弹窗开关销毁） */
+function ensureDataManagers() {
+  if (dataManagers) return;
+
+  const splashesManager = new McmodderConfigResourceInteractor<McmodderSplashData>(
+    parent,
+    "mcmodderSplashList_v2",
+    "已记录的闪烁标语", {
+      time: ["时间", (data: number) => data ? (new Date(data)).toLocaleString() : "未知"],
+      content: "记录内容",
+      num: ["次数", McmodderTable.DISPLAYRULE_NUMBER]
+    },
+    config => config?.split("\n") || [],
+    (_, data) => {
+      const list = data.split(",");
+      return {
+        time: Number(list[0]),
+        content: list[1],
+        num: Number(list[2])
+      }
+    }
+  );
+  dataManagers = [splashesManager,
+  new McmodderConfigResourceInteractor<McmodderClassRelationData>(
+    parent,
+    "modDependences_v2",
+    "已记录的模组前置信息", {
+      id: ["模组编号", McmodderTable.DISPLAYRULE_LINK_CLASS],
+      children: ["记录内容", McmodderTable.DISPLAYRULE_LINK_CLASS_ARRAY]
+    }, null, (key, item) => new Object({
+      id: key,
+      children: item
+    })
+  ),
+  new McmodderConfigResourceInteractor<McmodderClassRelationData>(
+    parent,
+    "modExpansions_v2",
+    "已记录的模组拓展信息", {
+      id: ["模组编号", McmodderTable.DISPLAYRULE_LINK_CENTER],
+      children: ["记录内容", McmodderTable.DISPLAYRULE_LINK_CLASS_ARRAY],
+    }, null, (key, item) => new Object({
+      id: key,
+      children: item
+    })
+  ),
+  new McmodderConfigResourceInteractor<McmodderRankDisplayData>(
+    parent,
+    "rankdata",
+    "已保存的贡献榜数据", {
+      date: ["日期", McmodderTable.DISPLAYRULE_DATE_SEC_ZH],
+      byteTop1: ["字数榜首", (rawData: string) => {
+        const data = rawData.split(",") as unknown as [number, number, number];
+        return `<a target="_blank" href="${ McmodderUtils.getCenterURL(data[0]) }">${ data[0] }</a> 
+          (${ data[1].toLocaleString() } 字节, ${ (data[2] * 100).toFixed(1) }%)`;
+      }],
+      totalEdited: ["前 60 名总编辑字数", (data: number) => `${data.toLocaleString()} 字节`],
+      size: ["数据大小", McmodderTable.DISPLAYRULE_SIZE]
+    }, null, (key, item) => {
+      let list = JSON.parse(item) as McmodderRankStorageData, sum = 0;
+      list.forEach(user => sum += user.value);
+      return {
+        date: Number(key),
+        byteTop1: [list[0].user, list[0].value, list[0].value / sum].join(","),
+        totalEdited: sum,
+        size: item.length
+      };
+    }
+  ),
+  new McmodderConfigResourceFileListInteractor(
+    parent,
+    "mcmodderJsonStorage",
+    "已保存的物品 JSON 文件"
+  ),
+  new McmodderConfigResourceFileListInteractor(
+    parent,
+    "mcmodderRecipeJsonStorage",
+    "已保存的合成表 JSON 文件"
+  )];
+
+  splashesManager.container.getHeader().click(_e => {
+    const splashCompare = splashesManager.instance.find(`#${ Mcmodder.ID_SPLASH_COMPARE }`);
+    if (splashCompare.length) {
+      if (McmodderUtils.isNodeHidden(splashCompare)) splashCompare.show();
+      else splashCompare.hide();
+      return;
+    }
+    $(`<btn class="btn" id="${ Mcmodder.ID_SPLASH_COMPARE }">与公共标语库对比</btn>`)
+    .appendTo(splashesManager.instance)
+    .click(async e => {
+      const button = $(e.currentTarget);
+      McmodderUtils.setButtonLoadingState(button);
+      await accessPublicSplashList(splashesManager);
+      McmodderUtils.cancelButtonLoadingState(button);
+    });
+  });
+}
+
+/** 将管理器挂载到当前数据容器（弹窗每次开关、切换组都会重建容器 DOM） */
+function mountDataManager() {
+  const container = dataContainer.value;
+  if (!container) return;
+  ensureDataManagers();
+  if (!dataManagers) return;
+
+  const $container = $(container);
+  $container.empty();
+  $container.append(`<div class="center-block-head">
+    <span class="title">资源管理</span>
+    <span style="font-size: 12px; color: gray; margin-left: 1em;">轻触各项可展开详情~</span>
+  </div>
+  <div class="center-content mcmodder-storage">
+    <ul></ul>
+  </div>`);
+
+  const storages = $container.find(".mcmodder-storage ul");
+  dataManagers.forEach(manager => {
+    const li = $("<li>").appendTo(storages);
+    manager.instance.appendTo(li);
+  });
+
+  $container.append(`<div class="center-setting-block" style="margin-top: 2em;">
+    <h4 style="margin-bottom: 0.5em; font-weight: bold;">投稿自定义闪烁标语</h4>
+    <p class="text-muted" style="margin-bottom: 0.8em; font-size: 13px;">已登录用户可投稿标语至云端。投稿需经脚本管理员审核过审后方可被其它脚本用户抓取显示。</p>
+    <div class="setting-item" style="display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="mcmodder-custom-splash-input" class="form-control" placeholder="输入自定义闪烁标语内容..." style="max-width: 400px; display: inline-block;">
+      <button class="btn btn-primary" id="mcmodder-custom-splash-submit">提交投稿</button>
+    </div>
+  </div>`);
+  $container.find("#mcmodder-custom-splash-submit")
+  .click(async e => {
+    const button = $(e.currentTarget);
+    const input = $container.find("#mcmodder-custom-splash-input");
+    const content = String(input.val() || "").trim();
+
+    if (!content) {
+      McmodderUtils.commonMsg("标语内容不能为空！", false);
+      return;
+    }
+
+    if (!parent.currentUID) {
+      McmodderUtils.commonMsg("请先登录 MC百科 账号后再发起投稿！", false);
+      return;
+    }
+
+    const authKey = utils.getProfile("auth_key");
+    if (!authKey) {
+      McmodderUtils.commonMsg("未获取到登录校验 Key，请重新登录！", false);
+      return;
+    }
+
+    McmodderUtils.setButtonLoadingState(button);
+    const res = await parent.supabaseUtils.uploadCustomSplash(content, authKey);
+    McmodderUtils.cancelButtonLoadingState(button);
+
+    if (res && res.message) {
+      McmodderUtils.commonMsg(res.message);
+      input.val("");
+    }
+  });
+
+  $container.append(`<div class="center-setting-block" style="margin-top: 2em;">
+    <div class="setting-item">
+      <button class="btn">清除当前所有计划任务</button>
+    </div>
+    <p class="text-muted">这在某些时候很有用——也许吧？</p>
+  </div>`);
+  $container.find(".center-setting-block .btn").last().click(() => {
+    emptyScheduleRequest();
+  });
+}
+
+async function accessPublicSplashList(manager: McmodderConfigResourceInteractor<McmodderSplashData>) {
+  const data = manager.table.getAllData().map(data => data.content).filter(data => data) as string[];
+  if (!data.length) {
+    McmodderUtils.commonMsg("还没有记录任何标语呢... 用“闪烁标语追踪器”记录一些标语后再试试？");
+    return;
+  }
+  const resp = await utils.createRequest({
+    url: Mcmodder.URL_PUBLIC_SPLASH_LIST_RAW,
+    method: "GET",
+    timeout: 5e3
+  });
+  if (resp?.status === 200) return performSplashCompare(resp.responseText, data);
+  const resp2 = await utils.createRequest({
+    url: Mcmodder.URL_ALTERNATIVE_PUBLIC_SPLASH_LIST_RAW,
+    method: "GET",
+    timeout: 5e3
+  });
+  if (resp2?.status === 200) return performSplashCompare(resp2.responseText, data);
+  McmodderUtils.commonMsg("公共标语库加载失败，请检查网络连接~", false);
+}
+
+function performSplashCompare(_publicList: string, localList: string[]) {
+  const publicList: string[] = JSON.parse(_publicList);
+  let unique: string[] = [], flag;
+  localList.forEach(e => {
+    if (!e) return;
+    e = e.toString().replace(parent.currentUsername, "%s");
+    flag = true;
+    publicList.forEach(f => {
+      if (e === f) flag = false;
+    });
+    if (flag) unique.push(e);
+  });
+  const footer = `<a target="_blank" href="${ Mcmodder.URL_PUBLIC_SPLASH_LIST }">在 GitHub 查看公共标语库</a>`;
+  if (unique.length) {
+    swal.fire({
+      type: "info",
+      title: "对比完毕",
+      html: `
+        本地有 ${unique.length.toLocaleString()} 条标语尚未被公共标语库收录！<br>
+        检查确认无误后，您可以通过任意方式与作者取得联系来更新完善我们的公共标语库~<br>
+        未收录的标语如下：
+        <textarea id="mcmodder-unique-splashes" class="form-control mcmodder-monospace">`,
+      footer: footer
+    });
+    $("#mcmodder-unique-splashes").val(JSON.stringify(unique, null, 2));
+  }
+  else swal.fire({
+    type: "success",
+    title: "对比完毕",
+    text: "本地所有标语均已被公共标语库收录~",
+    footer: footer
+  });
+}
+
+function emptyScheduleRequest() {
+  const list = parent.scheduleRequestUtils.get();
+  if (list.length) {
+    parent.scheduleRequestUtils.empty();
+    McmodderUtils.commonMsg(`${ list.length.toLocaleString() } 项计划任务已被清除~`);
+  } else {
+    McmodderUtils.commonMsg("当前没有计划任务~");
+  }
+}
 </script>
 
 <style scoped>
 .mcmodder-settings-panel {
   font-size: 14px;
   color: var(--mcmodder-color-text);
+  line-height: 1.7;
 }
-.center-setting-block {
-  padding: .6em 0;
+.mcmodder-settings-panel .btn {
+  display: inline-block;
+  padding: 6px 14px;
+  font-size: 14px;
+  line-height: 1.428;
+  border-radius: calc(var(--mcmodder-width-radius) * .8);
+  border: 1px solid var(--mcmodder-color-background-dark3);
+  background: linear-gradient(45deg, var(--mcmodder-color-primary-light), var(--mcmodder-color-accent-light));
+  color: var(--mcmodder-color-text);
+  cursor: var(--mcmodder-cursor-hand);
+  white-space: nowrap;
+}
+.mcmodder-settings-panel .btn:hover {
+  background-color: var(--mcmodder-color-accent-background);
+  background-image: none;
+}
+.mcmodder-settings-panel .btn:active {
+  background-color: var(--mcmodder-color-accent-transparent2);
+  background-image: none;
+}
+.mcmodder-settings-panel .btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.btn-accent {
+  background: linear-gradient(45deg, var(--mcmodder-color-primary), var(--mcmodder-color-accent)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px var(--mcmodder-color-primary-transparent1);
+}
+.btn-accent:hover {
+  background-color: var(--mcmodder-color-accent-dark1) !important;
+  background-image: none !important;
+}
+
+.mcmodder-settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+}
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity .18s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-pop-enter-active {
+  transition: opacity .22s ease, transform .22s cubic-bezier(.34, 1.2, .5, 1);
+}
+.modal-pop-leave-active {
+  transition: opacity .15s ease, transform .15s ease;
+}
+.modal-pop-enter-from,
+.modal-pop-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.96);
+}
+.mcmodder-hl {
+  background-color: var(--mcmodder-color-accent-transparent2);
+  color: var(--mcmodder-color-accent);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.modal-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+}
+.modal-window {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(980px, 94vw);
+  height: min(760px, 88vh);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--mcmodder-color-background);
+  border: 1px solid var(--mcmodder-color-background-dark2);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .35);
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--mcmodder-color-background-dark2);
+  background-color: var(--mcmodder-color-background-dark1);
 }
-.center-setting-block:last-child {
-  border-bottom: none;
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.modal-version {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mcmodder-color-text-dark3);
+  margin-left: .4em;
+}
+.modal-search {
+  position: relative;
+  flex: 1;
+  max-width: 380px;
+  margin: 0 auto;
+}
+.modal-search > i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--mcmodder-color-text-dark3);
+  font-size: 13px;
+  pointer-events: none;
+}
+.modal-search input {
+  width: 100%;
+  height: 32px;
+  padding: 4px 28px 4px 30px;
+  background-color: var(--mcmodder-color-background);
+  border: 1px solid var(--mcmodder-color-background-dark3);
+  border-radius: 10px;
+  color: var(--mcmodder-color-text);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.modal-search input:focus {
+  border-color: var(--mcmodder-color-accent);
+  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
+}
+.search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mcmodder-color-text-dark3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: var(--mcmodder-cursor-hand);
+}
+.search-clear:hover {
+  background-color: var(--mcmodder-color-background-dark2);
+  color: var(--mcmodder-color-text);
+}
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mcmodder-color-text-dark3);
+  font-size: 20px;
+  line-height: 1;
+  cursor: var(--mcmodder-cursor-hand);
+  flex: none;
+}
+.modal-close:hover {
+  background-color: var(--mcmodder-color-background-dark2);
+  color: var(--mcmodder-color-text);
+}
+.modal-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.modal-sidebar {
+  width: 190px;
+  flex: none;
+  overflow-y: auto;
+  padding: 12px 10px;
+  border-right: 1px solid var(--mcmodder-color-background-dark2);
+  background-color: var(--mcmodder-color-background-dark1);
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  margin-bottom: 2px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--mcmodder-color-text);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: var(--mcmodder-cursor-hand);
+  transition: background-color .15s ease, color .15s ease;
+}
+.sidebar-item:hover {
+  background-color: var(--mcmodder-color-background-dark2);
+}
+.sidebar-item.active {
+  background: linear-gradient(45deg, var(--mcmodder-color-primary-transparent1), var(--mcmodder-color-accent-transparent2));
+  color: var(--mcmodder-color-accent);
+  font-weight: 600;
+}
+.sidebar-count {
+  font-size: 11.5px;
+  color: var(--mcmodder-color-text-dark3);
+  background-color: var(--mcmodder-color-background-dark2);
+  border-radius: 8px;
+  padding: 1px 7px;
+  flex: none;
+}
+.sidebar-item.active .sidebar-count {
+  background-color: var(--mcmodder-color-accent-transparent2);
+  color: var(--mcmodder-color-accent);
+}
+.modal-content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+.group-block {
+  margin-bottom: 16px;
+}
+.group-block:last-child {
+  margin-bottom: 0;
+}
+.group-heading {
+  margin: 0 0 8px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mcmodder-color-text-dark3);
+}
+.group-card {
+  background-color: var(--mcmodder-color-background-dark1);
+  border: 1px solid var(--mcmodder-color-background-dark2);
+  border-radius: 14px;
+  padding: 4px 18px 10px;
+}
+.group-block .group-card + .group-card {
+  margin-top: 12px;
+}
+.group-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4em .8em;
+  padding: 10px 0 6px;
+}
+.group-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
 }
 .setting-item {
   display: flex;
   align-items: center;
-  gap: .5em;
+  justify-content: space-between;
+  gap: 1em 1.5em;
   flex-wrap: wrap;
-  line-height: 1.8;
+  padding: 10px 0;
+  border-top: 1px solid var(--mcmodder-color-background-dark2);
 }
-.setting-item > .title {
-  font-weight: bold;
-  white-space: nowrap;
+.setting-info {
+  flex: 1 1 46%;
+  min-width: 260px;
 }
-.setting-item .form-control {
+.setting-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4em .8em;
+}
+.setting-info > .title,
+.setting-title-row > .title {
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: normal;
+}
+.setting-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: .5em .8em;
+  flex: 0 1 auto;
+  min-width: 260px;
+}
+.setting-control .form-control {
   display: inline-block;
-  width: 240px;
+  width: 260px;
   max-width: 100%;
-  padding: .2em .5em;
+  height: 34px;
+  padding: 6px 12px;
   background-color: var(--mcmodder-color-background);
   border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: var(--mcmodder-width-radius);
+  border-radius: 10px;
   color: var(--mcmodder-color-text);
   font-size: 14px;
+  line-height: 1.428;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
-.setting-item .form-control:focus {
+.setting-control .form-control:focus {
   border-color: var(--mcmodder-color-accent);
   box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
   outline: none;
 }
-.setting-item .form-control.mcmodder-colorpicker {
-  width: 4em;
-  height: 2em;
+.setting-control .form-control.mcmodder-colorpicker {
+  width: 4.5em;
+  height: 2.4em;
   padding: 2px;
 }
-.setting-item .btn {
-  padding: .25em .8em;
-  background: linear-gradient(45deg, var(--mcmodder-color-primary-light), var(--mcmodder-color-accent-light));
-  color: var(--mcmodder-color-text);
-  border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: var(--mcmodder-width-radius);
-  cursor: var(--mcmodder-cursor-hand);
-  margin: 0 var(--mcmodder-width-padding-3);
-}
-.setting-item .btn:disabled {
-  opacity: .6;
-  cursor: not-allowed;
+.setting-control .btn {
+  margin: 0;
 }
 .text-muted {
   color: var(--mcmodder-color-text-dark3);
-  font-size: 12.5px;
-  margin: .25em 0 0 0;
-  line-height: 1.6;
+  font-size: 13px;
+  margin: .35em 0 0 0;
+  line-height: 1.7;
 }
-/* 复选框 */
-.checkbox {
+.switch {
   position: relative;
   display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex: none;
   cursor: var(--mcmodder-cursor-hand);
 }
-.checkbox input[type="checkbox"] {
+.switch input[type="checkbox"] {
   position: absolute;
   width: 0;
   height: 0;
   opacity: 0;
 }
-.checkbox label {
-  display: inline-block;
-  position: relative;
-  padding-left: 1.6em;
-  margin-bottom: 0;
-  cursor: var(--mcmodder-cursor-hand);
-  line-height: 1.8;
+.switch .switch-slider {
+  position: absolute;
+  inset: 0;
+  background-color: var(--mcmodder-color-background-dark3);
+  border-radius: 12px;
+  transition: background-color .25s ease;
 }
-.checkbox label::before {
+.switch .switch-slider::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1.2em;
-  height: 1.2em;
-  background-color: var(--mcmodder-color-background);
-  border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: 3px;
+  left: 3px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  transition: transform .25s cubic-bezier(.4, 1.2, .6, 1);
 }
-.checkbox input[type="checkbox"]:checked + label::before {
-  background-color: var(--mcmodder-color-primary);
-  border-color: var(--mcmodder-color-primary-dark1);
+.switch input[type="checkbox"]:checked + .switch-slider {
+  background: linear-gradient(45deg, var(--mcmodder-color-primary), var(--mcmodder-color-accent));
 }
-.checkbox input[type="checkbox"]:checked + label::after {
-  content: "\f00c";
-  font-family: FontAwesome;
-  position: absolute;
-  left: .15em;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #fff;
-  font-size: .9em;
+.switch input[type="checkbox"]:checked + .switch-slider::before {
+  transform: translateX(20px);
 }
-/* 数字输入 */
+.switch input[type="checkbox"]:focus-visible + .switch-slider {
+  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
+}
+.switch input[type="checkbox"]:disabled + .switch-slider {
+  opacity: .6;
+  cursor: not-allowed;
+}
 .mcmodder-numberinput-container {
   display: inline-block;
 }
 .mcmodder-numberinput-container .form-control {
   width: 180px;
 }
-/* 滑块 */
 .mcmodder-slider-container {
   display: inline-block;
-  width: 250px;
+  width: 240px;
   vertical-align: middle;
+  margin-left: .5em;
 }
 .mcmodder-slider-bar {
   position: relative;
-  margin: 0 1em;
   height: 6px;
-  background-color: var(--mcmodder-color-primary-light);
+  background-color: var(--mcmodder-color-background-dark3);
   border-radius: 3px;
-  cursor: pointer;
+  cursor: var(--mcmodder-cursor-hand);
 }
 .mcmodder-slider-tap {
   position: absolute;
-  top: -5px;
-  height: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 16px;
-  background-color: var(--mcmodder-color-primary);
-  border: 1px solid var(--mcmodder-color-background-dark3);
+  height: 16px;
   border-radius: 50%;
-  transform: translateX(-50%);
-  cursor: var(--mcmodder-cursor-hand);
+  background: linear-gradient(45deg, var(--mcmodder-color-primary), var(--mcmodder-color-accent));
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  margin-left: -8px;
 }
-.mcmodder-slider-tap:hover,
 .mcmodder-slider-tap.focus {
-  border-color: var(--mcmodder-color-accent);
-  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
+  box-shadow: 0 0 0 .25em var(--mcmodder-color-accent-transparent2);
 }
-/* 快捷键 */
 .mcmodder-keybind-input {
-  width: 240px;
-  text-align: center;
-  cursor: text;
+  font-family: Consolas, "Courier New", monospace !important;
 }
-/* 下拉菜单 */
 .mcmodder-select {
-  display: inline-block;
-  padding: .2em .5em;
+  height: 34px;
+  padding: 4px 10px;
   background-color: var(--mcmodder-color-background);
   border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: var(--mcmodder-width-radius);
+  border-radius: 10px;
   color: var(--mcmodder-color-text);
   font-size: 14px;
+  max-width: 100%;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
-/* 推荐列表 */
+.mcmodder-select:focus {
+  border-color: var(--mcmodder-color-accent);
+  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
+  outline: none;
+}
 .mcmodder-input-container {
   position: relative;
   display: inline-block;
 }
+.mcmodder-input-container .form-control {
+  width: 260px;
+}
 .mcmodder-input-list {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
+  right: 0;
   z-index: 10;
-  min-width: 100%;
-  max-width: 480px;
-  max-height: 300px;
-  overflow: auto;
-  background-color: var(--mcmodder-color-background);
+  max-height: 220px;
+  overflow-y: auto;
+  background-color: var(--mcmodder-color-background-dark1);
   border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: var(--mcmodder-width-radius);
-  box-shadow: 0px 2px 5px var(--mcmodder-color-background-dark2);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
 }
 .mcmodder-input-list a {
   display: block;
-  padding: .3em .6em;
+  padding: 8px 12px;
   color: var(--mcmodder-color-text);
   text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .mcmodder-input-list a:hover {
-  background-color: var(--mcmodder-color-primary-transparent1);
+  background-color: var(--mcmodder-color-accent-transparent2);
 }
 .mcmodder-input-list .empty {
   display: block;
-  padding: .3em .6em;
+  padding: 8px 12px;
   color: var(--mcmodder-color-text-dark3);
 }
-/* 认证与同步 */
 .mcmodder-auth-user {
-  margin-left: .25em;
+  font-size: 13px;
 }
 .mcmodder-auth-state {
-  margin-left: var(--mcmodder-width-padding-3);
-}
-.text-success {
-  color: var(--mcmodder-color-primary-dark1);
-}
-.text-danger {
-  color: var(--mcmodder-color-danger);
-}
-.text-muted {
-  color: var(--mcmodder-color-text-dark3);
+  font-size: 14px;
 }
 .supabase-sync-block {
-  margin-top: .5em;
+  margin-top: 8px;
+  padding: 12px 0 6px;
+  border-top: 1px dashed var(--mcmodder-color-background-dark3);
 }
-.supabase-sync-block .btn {
-  margin: 0 var(--mcmodder-width-padding-3) 0 0;
+.supabase-sync-hint {
+  display: block;
+  margin-bottom: .6em;
+  font-size: 12.5px;
+  color: var(--mcmodder-color-text-dark3);
+}
+.supabase-sync-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6em;
+}
+.supabase-sync-buttons .btn {
+  margin: 0;
+}
+.supabase-sync-buttons .btn i {
+  margin-right: .4em;
+  color: var(--mcmodder-color-accent-dark1);
 }
 .mcmodder-settings-timer-slot {
   display: inline-block;
   margin-left: .5em;
+}
+.no-result {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--mcmodder-color-text-dark3);
+  font-size: 13.5px;
+}
+</style>
+
+<style>
+/* 数据管理：资源管理器由 jQuery 生成 DOM（无 data-v 属性），scoped 样式
+   无法命中，需以非 scoped 形式注入（vite 构建时统一标记并由 syncVueStyles
+   复制进 Shadow Root）。 */
+.data-manager .mcmodder-collapsible-container {
+  border: 1px solid var(--mcmodder-color-primary);
+  border-radius: var(--mcmodder-width-radius);
+  margin: .5em 0;
+}
+.data-manager .mcmodder-collapsible-header {
+  position: relative;
+  padding: var(--mcmodder-width-padding-2);
+  border-radius: var(--mcmodder-width-radius);
+  background-image: linear-gradient(45deg, var(--mcmodder-color-primary-background), var(--mcmodder-color-accent-background));
+  cursor: var(--mcmodder-cursor-hand);
+  user-select: none;
+}
+.data-manager .mcmodder-collapsible-container.expanded .mcmodder-collapsible-header {
+  border-radius: var(--mcmodder-width-radius) var(--mcmodder-width-radius) 0 0;
+}
+.data-manager .mcmodder-collapsible-header::after {
+  position: absolute;
+  content: "\f0d7";
+  font-family: "FontAwesome";
+  right: var(--mcmodder-width-padding-2);
+  transition: transform .3s;
+}
+.data-manager .mcmodder-collapsible-container.expanded .mcmodder-collapsible-header::after {
+  transform: rotate(-180deg);
+}
+.data-manager .mcmodder-collapsible-header:hover {
+  background-image: none;
+  background-color: var(--mcmodder-color-background);
+}
+.data-manager .mcmodder-collapsible-content {
+  display: none;
+}
+.data-manager .mcmodder-collapsible-container.expanded .mcmodder-collapsible-content {
+  display: inherit;
+  padding: var(--mcmodder-width-padding-2);
+  border-top: 1px solid var(--mcmodder-color-primary-transparent1);
+}
+.data-manager .mcmodder-collapsible-content > * {
+  transition: opacity .3s;
+  opacity: 0;
+}
+.data-manager .mcmodder-collapsible-container.expanded .mcmodder-collapsible-content > * {
+  opacity: 1;
+}
+.data-manager .mcmodder-storage {
+  margin-top: .5em;
+}
+.data-manager .mcmodder-storage ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.data-manager .mcmodder-storage ul > li {
+  margin: 0 0 .3em;
+}
+.data-manager .mcmodder-table-container {
+  position: relative;
+  min-height: 150px;
+}
+.data-manager .mcmodder-table-loading-overlay {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background-color: var(--mcmodder-color-background-transparent);
+  opacity: 1;
+  transition: opacity 0.8s ease-in-out 0s;
+  z-index: 1;
+}
+.data-manager .mcmodder-table-loading-overlay.faded {
+  opacity: 0;
+}
+.data-manager .mcmodder-table-loading-container {
+  height: 100%;
+  max-height: 300px;
+  position: relative;
+}
+.data-manager .mcmodder-table-loading-progress {
+  position: absolute;
+  width: 16em;
+  left: calc(50% - 8em);
+  bottom: calc(50% - 5em);
+}
+.data-manager .mcmodder-table {
+  width: 100%;
+  margin-top: 0;
+  background-color: var(--mcmodder-color-background-transparent);
+  overflow: hidden;
+  border-collapse: collapse;
+}
+.data-manager .mcmodder-table-empty {
+  height: 100px;
+  min-height: 100px;
+  position: relative;
+}
+.data-manager .mcmodder-table-empty::before {
+  content: "暂无数据";
+  text-wrap: nowrap;
+  position: absolute;
+  width: 100%;
+  line-height: 100px;
+  color: var(--mcmodder-color-text-dark3);
+  text-align: center;
+}
+.data-manager .mcmodder-table tbody {
+  white-space: nowrap;
+  overflow: hidden;
+}
+.data-manager .mcmodder-table thead {
+  height: 1em;
+}
+.data-manager .mcmodder-table td,
+.data-manager .mcmodder-table th {
+  border: 1px solid var(--mcmodder-color-background-dark2);
+  text-align: center;
+  max-width: 500px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  padding: .3em .6em;
+}
+.data-manager .mcmodder-table tr:not(.mcmodder-table-empty):nth-child(2n) {
+  background-color: var(--mcmodder-color-background);
+}
+.data-manager .mcmodder-table tr:not(.mcmodder-table-empty):nth-child(2n+1) {
+  background-color: var(--mcmodder-color-primary-background);
+}
+.data-manager .mcmodder-table-margin-top,
+.data-manager .mcmodder-table-margin-bottom {
+  height: 0;
+}
+.data-manager .mcmodder-table-loading-overlay .mcmodder-table-loading-container::before {
+  content: "加载中...";
+  color: var(--mcmodder-color-text-dark3);
 }
 </style>

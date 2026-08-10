@@ -2,25 +2,18 @@ import type { McmodderKeyData } from "../types";
 import { McmodderUtils } from "../Utils";
 
 type ContextMenuDisplayRule = (e: JQueryMouseEventObject) => boolean;
-/** 菜单项回调：参数为触发菜单的原始 contextmenu 事件 */
 type ContextMenuCallback = (e: any) => void;
 
-/** 菜单渲染条目（Vue 组件与适配器共享） */
 export interface ContextMenuEntry {
   key: string;
   text: string;
-  /** 可选的 FontAwesome 图标类名，如 "fa fa-trash" */
   icon?: string;
   shortcut?: McmodderKeyData;
-  /** 触发回调时传入原始 contextmenu 事件 */
   callback: (e: unknown) => void;
-  /** 由适配器预生成的快捷键 HTML */
   shortcutHTML?: string;
-  /** 由适配器解析出的图标字形 */
   iconGlyph?: string;
 }
 
-/** Vue 菜单组件向适配器暴露的命令接口 */
 export interface ContextMenuExpose {
   show: (x: number, y: number, activeIndexList: number[], entries: ContextMenuEntry[], event: unknown) => Promise<void>;
   hide: () => void;
@@ -39,7 +32,6 @@ type ContextMenuItem = {
 export type ContextMenuItemOption = {
   key: string;
   text: string;
-  /** 可选的 FontAwesome 图标类名，如 "fa fa-trash" */
   icon?: string;
   shortcut?: McmodderKeyData;
   displayRule: ContextMenuDisplayRule;
@@ -69,20 +61,12 @@ function getFaGlyph(className: string): string {
   return faGlyphCache[className];
 }
 
-/**
- * 右键上下文菜单 —— Vue 3 重构版适配层。
- *
- * 保留原有 `McmodderContextMenu` 的公开 API（构造、addItem / show / hide /
- * isActive），内部改为懒加载并挂载 `ContextMenu.vue` 至 Shadow DOM。
- * Vue 运行时仅在菜单首次被触发时才加载。
- */
 export class McmodderContextMenu {
 
   private $container: JQuery;
-  private container: Element;
+  private container: HTMLElement;
   private activeState: boolean;
-  /** 影子宿主节点（位于容器内部，坐标为容器原点） */
-  private $instance: JQuery;
+    private $instance: JQuery;
   instance: Element;
   private items: ContextMenuItem[];
   private itemCount = 0;
@@ -93,7 +77,7 @@ export class McmodderContextMenu {
 
   constructor(container: Element | JQuery) {
     this.$container = $(container).css("position", "relative");
-    this.container = this.$container.get(0);
+    this.container = this.$container.get(0) as HTMLElement;
     this.activeState = false;
     this.$instance = $(`
       <div class="mcmodder-contextmenu-host" tabindex="-1"></div>`).prependTo(container);
@@ -118,7 +102,6 @@ export class McmodderContextMenu {
     this.bindEvents();
   }
 
-  /** 懒加载并挂载 Vue 菜单组件 */
   private async ensureMounted() {
     if (this.component) return;
     if (!this.mountPromise) {

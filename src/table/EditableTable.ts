@@ -11,20 +11,10 @@ import { McmodderTable } from "./Table";
 import { McmodderConfigUtils, McmodderInputType } from "../config/ConfigUtils";
 import { EditConfigInitializer, EditConfigs, EditConfigsInitializer, HeadConfigsInitializer, InputValueNumericRange, McmodderTableAcceptable, McmodderTableDataList, McmodderTableRowData, McmodderTableRowSelection, McmodderTableInputData } from "../types";
 
-/** Vue 表格组件类型占位（实际实现位于 EditableTable.vue，其类型导入本文件接口） */
 export type EditableTableExpose = {
   requestRender(rowIndex?: number): void;
 };
 
-/**
- * 可编辑表格 —— Vue 3 重构版适配层。
- *
- * 保留原 `McmodderEditableTable` 的全部数据/命令/剪贴板/历史/键盘逻辑，
- * 渲染层委托给挂载于 Shadow DOM 内的 `EditableTable.vue`。
- * Vue 运行时仅在实例化本表格时才被懒加载。
- */
-
-/** 单元格显示状态（Vue 组件渲染所需的最小快照） */
 export interface EditableTableCellDisplay {
   html: string;
   original: string;
@@ -35,7 +25,6 @@ export interface EditableTableCellDisplay {
   inputRange?: InputValueNumericRange;
 }
 
-/** Vue 表格组件依赖的适配器桥接接口 */
 export interface EditableTableBridge<T extends McmodderTableAcceptable = McmodderTableAcceptable> {
   readonly currentData: McmodderTableRowData<T>[];
   readonly headConfigs: Record<string, { name: string }>;
@@ -44,17 +33,11 @@ export interface EditableTableBridge<T extends McmodderTableAcceptable = Mcmodde
   readonly selectedRowCount: number;
   readonly isLoading: boolean;
   getCellDisplay(index: number, key: string): EditableTableCellDisplay;
-  /** 提交单元格编辑；校验失败时返回 false（已弹出错误提示） */
   commitEdit(index: number, key: string, newValue: any): boolean;
-  /** 行悬停（Shift 按住时执行范围选择） */
   onRowHover(index: number): void;
-  /** 单元格悬停状态变更 */
   onCellHover(index: number | null): void;
-  /** 拖拽排序后的新行顺序（保留每行的 selected/edited 状态） */
   onRowsRearranged(newOrder: McmodderTableRowData<T>[]): void;
-  /** 表格内跳转链接点击 */
   onGotoClick(key: string, value: any): void;
-  /** 数据变更后通知组件重渲染 */
   requestRender(rowIndex?: number): void;
 }
 
@@ -81,13 +64,12 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
   private history: Command<McmodderTableData>[];
   private historyStage: number;
   clipboard: McmodderTableDataList<McmodderTableData>;
-  contextMenu = new McmodderContextMenu(/* this.parent, */this.$instance);
+  contextMenu = new McmodderContextMenu(this.$instance);
 
   onEdit?: () => void;
 
   private prevHoverIndex?: number;
 
-  /** Vue 组件宿主 */
   private vueHost: JQuery;
   private component?: EditableTableExpose;
   private mountPromise?: Promise<void>;
@@ -138,14 +120,12 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
 
     this.initContextMenu();
 
-    // Vue 渲染宿主：挂载后移除基类骨架 DOM
     this.vueHost = $(`<div class="mcmodder-vue-table-host"></div>`).appendTo(this.$instance);
     this.ensureMounted().then(() => {
       this.$instance.find("table, .mcmodder-table-loading-overlay").remove();
     });
   }
 
-  /** 懒加载并挂载 Vue 表格组件 */
   private ensureMounted() {
     if (this.component) return Promise.resolve();
     if (!this.mountPromise) {
@@ -197,7 +177,6 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
     return content;
   }
 
-  /* ---------------- 桥接接口（供 EditableTable.vue 使用） ---------------- */
 
   getCellDisplay(index: number, key: string): EditableTableCellDisplay {
     const rowData = this.currentData[index];
@@ -211,11 +190,9 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
 
     let html: string;
     if (unsaved) {
-      // 已编辑值：空值显示占位符，否则应用展示规则
       if (value === "" || value === undefined || value == null) html = "-";
       else html = EditableTableUtils.displayRuleToString(displayRule ? displayRule(value, rowData.content) : value);
     } else {
-      // 未编辑：与基类 renderUnit 一致的空值检查（单参数规则不参与）
       if ((!displayRule || displayRule.length < 2) && (value === "" || value === undefined || value == null)) html = "-";
       else html = EditableTableUtils.displayRuleToString(displayRule ? displayRule(value, rowData.content) : value);
     }
@@ -262,7 +239,7 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
     if (this.prevHoverIndex != undefined) {
       if (index === this.prevHoverIndex) return;
       let dir = index > this.prevHoverIndex ? 1 : -1;
-      for (let i = this.prevHoverIndex + dir; i != index; i += dir) { // 补间
+      for (let i = this.prevHoverIndex + dir; i != index; i += dir) {
         this.switchSelectState(i);
       }
     }
@@ -290,7 +267,6 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
     this.component?.requestRender(rowIndex);
   }
 
-  /* ---------------- 原数据操作方法（渲染委托给 Vue 组件） ---------------- */
 
   getSelection() {
     let selection: McmodderTableRowSelection = [];
@@ -454,7 +430,6 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
     this.selectRow(index, selected);
   }
 
-  /* ---------------- 渲染层（由 Vue 组件接管） ---------------- */
 
   override refreshAll() {
     this.completeLoading();
@@ -463,7 +438,6 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
   }
 
   override onScroll() {
-    // 虚拟滚动由 EditableTable.vue 内部处理
   }
 
   override bindEvents() {
@@ -606,7 +580,6 @@ export class McmodderEditableTable<McmodderTableData extends McmodderTableAccept
   }
 }
 
-/** 单元格 HTML 渲染工具 */
 export namespace EditableTableUtils {
   export function displayRuleToString(content: any): string {
     if (content === null || content === undefined) return "-";

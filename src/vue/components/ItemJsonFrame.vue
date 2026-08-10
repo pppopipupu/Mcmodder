@@ -1,6 +1,5 @@
 <template>
   <div class="mcmodder-jsonframe">
-    <!-- 菜单栏（吸顶） -->
     <div class="jsonframe-menu">
       <div class="jsonframe-menucontent">
         <select class="jsonframe-select" :value="frame.activeFileName" @change="onFileChange($event)">
@@ -19,10 +18,8 @@
       </div>
     </div>
 
-    <!-- 表格内容区（由适配器注入 table.$instance） -->
     <div class="jsonframe-content" ref="contentSlot" />
 
-    <!-- 从模组导入 JSON 面板 -->
     <div v-if="panelMode === 'class'" class="jsonframe-panel-mask" @click.self="panelMode = null">
       <div class="jsonframe-panel">
         <div class="jsonframe-panel-head">
@@ -88,7 +85,6 @@
       </div>
     </div>
 
-    <!-- 从收纳贴获取 JSON 面板 -->
     <div v-if="panelMode === 'online'" class="jsonframe-panel-mask" @click.self="panelMode = null">
       <div class="jsonframe-panel jsonframe-panel-wide">
         <div class="jsonframe-panel-head">
@@ -148,14 +144,6 @@ import type { ItemJsonFrame as ItemJsonFrameAdapter } from "../../jsonframe/Item
 import type { ItemJsonFrameExpose } from "../../jsonframe/ItemJsonFrame";
 import { McmodderUtils } from "../../Utils";
 
-/**
- * 物品 JSON 构造界面 —— Vue 3 重构版。
- *
- * 框架外壳（文件选择、工具栏、导入/在线面板）由本组件渲染，表格内容区
- * 注入适配器持有的 `McmodderEditableTable`；所有业务逻辑保留在
- * `ItemJsonFrame.ts` 适配器内。
- */
-
 const props = defineProps<{
   frame: ItemJsonFrameAdapter;
   onReady?: (api: ItemJsonFrameExpose) => void;
@@ -163,7 +151,6 @@ const props = defineProps<{
 
 const frame = props.frame;
 
-/* ---------------- 文件选择与工具栏 ---------------- */
 
 const stateVersion = ref(0);
 const selectionList = computed(() => {
@@ -251,7 +238,6 @@ function onImportFile(tool: FrameTool, e: Event) {
   (e.target as HTMLInputElement).value = "";
 }
 
-/* ---------------- 内容区注入 ---------------- */
 
 const contentSlot = ref<HTMLElement | null>(null);
 
@@ -271,7 +257,6 @@ function updateState() {
   stateVersion.value++;
 }
 
-/* ---------------- 日志 ---------------- */
 
 const loggerEntries = ref<ItemJsonFrameLogEntry[]>([]);
 const loggerEl = ref<HTMLElement | null>(null);
@@ -284,7 +269,6 @@ function setLoggerEntries(entries: ItemJsonFrameLogEntry[]) {
   });
 }
 
-/* ---------------- 从模组导入 JSON ---------------- */
 
 const panelMode = ref<"class" | "online" | null>(null);
 const searchBusy = ref(false);
@@ -368,7 +352,6 @@ function setSearchButtonBusy(busy: boolean) {
   searchBusy.value = busy;
 }
 
-/* ---------------- 收纳贴在线文件 ---------------- */
 
 const onlineFiles = ref<ItemJsonFrameApplication[]>([]);
 const maxPage = ref(1);
@@ -427,8 +410,11 @@ function downloadFile(file: ItemJsonFrameApplication) {
 .mcmodder-jsonframe {
   font-size: 14px;
   color: var(--mcmodder-color-text);
+  display: inline-block;
+  width: 100%;
+  border: 1px solid var(--mcmodder-color-accent-dark1);
+  vertical-align: top;
 }
-/* 菜单栏 */
 .jsonframe-menu {
   padding: 3px;
   width: 100%;
@@ -485,7 +471,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
   opacity: .6;
   cursor: not-allowed;
 }
-/* 内容区 */
 .jsonframe-content {
   min-height: 300px;
   background-color: var(--mcmodder-color-accent-transparent2);
@@ -503,7 +488,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
 .jsonframe-content :deep(.jsonframe-content) {
   background-color: transparent;
 }
-/* 面板 */
 .jsonframe-panel-mask {
   position: fixed;
   inset: 0;
@@ -542,7 +526,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
   text-decoration: none;
   cursor: var(--mcmodder-cursor-hand);
 }
-/* 导入面板表单 */
 .edit-autolink-frame {
   font-size: 13.5px;
 }
@@ -578,7 +561,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
   display: block;
   height: 0;
 }
-/* 复选框 */
 .checkbox {
   position: relative;
   display: inline-block;
@@ -623,7 +605,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
   color: #fff;
   font-size: .85em;
 }
-/* 推荐列表 */
 .mcmodder-input-container {
   position: relative;
   flex: 1;
@@ -661,7 +642,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
   padding: .3em .6em;
   color: var(--mcmodder-color-text-dark3);
 }
-/* 日志 */
 .mcmodder-logger {
   height: 300px;
   max-height: 300px;
@@ -693,7 +673,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
 .mcmodder-logger .key {
   color: orchid;
 }
-/* 在线文件表格 */
 .jsonframe-bbs-filelist .mcmodder-table {
   width: 100%;
   border-collapse: collapse;
@@ -736,7 +715,6 @@ function downloadFile(file: ItemJsonFrameApplication) {
   text-overflow: ellipsis;
   vertical-align: middle;
 }
-/* 分页 */
 .pagination {
   list-style: none;
   display: flex;

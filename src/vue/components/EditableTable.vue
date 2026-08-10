@@ -1,6 +1,5 @@
 <template>
   <div class="mcmodder-vue-table">
-    <!-- 加载遮罩 -->
     <div v-if="table.isLoading" class="mcmodder-table-loading-overlay">
       <div class="mcmodder-table-loading-container">
         <div class="mcmodder-loading" />
@@ -31,7 +30,7 @@
             @dragend="dragIndex = null"
           >
             <td
-              v-for="(head, key) in table.headConfigs"
+              v-for="(_, key) in table.headConfigs"
               :key="key"
               :data-key="key"
               :data-readonly="cellDisplay(index, key).readonly ? '1' : undefined"
@@ -70,14 +69,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { McmodderInputType } from "../../config/ConfigUtils";
 import type { EditableTableBridge, EditableTableExpose } from "../../table/EditableTable";
 
-/**
- * 可编辑表格 —— Vue 3 重构版。
- *
- * 数据与命令逻辑全部保留在 `McmodderEditableTable` 适配器内，本组件负责
- * 表格渲染、虚拟滚动、单元格内联编辑、悬停选择与拖拽排序，并通过
- * `EditableTableBridge` 与适配器交互。
- */
-
 const props = defineProps<{
   table: EditableTableBridge;
   onReady?: (api: EditableTableExpose) => void;
@@ -89,7 +80,6 @@ const ROW_EXPAND = 2;
 const THROTTLE_INTERVAL = 16;
 const ROW_HEIGHT_DEFAULT = 48;
 
-/* ---------------- 渲染驱动 ---------------- */
 
 const version = ref(0);
 const tbodyEl = ref<HTMLElement | null>(null);
@@ -159,7 +149,6 @@ function measureRowHeight() {
   }
 }
 
-/* ---------------- 单元格状态 ---------------- */
 
 function cellDisplay(index: number, key: string) {
   return table.getCellDisplay(index, key);
@@ -186,7 +175,6 @@ function cellClasses(index: number, key: string) {
   };
 }
 
-/* ---------------- 悬停与选择 ---------------- */
 
 const hoveredCell = ref<{ index: number; key: string } | null>(null);
 
@@ -204,11 +192,10 @@ function onTdMouseleave() {
   table.onCellHover(null);
 }
 
-/* ---------------- 单元格内联编辑 ---------------- */
 
 const editing = ref<{ index: number; key: string; initial: any; type: McmodderInputType } | null>(null);
 const editValue = ref("");
-let editInputEl: HTMLInputElement | null = null;
+const editInputEl = ref<HTMLInputElement | null>(null);
 
 function isEditingCell(index: number, key: string) {
   return editing.value?.index === index && editing.value?.key === key;
@@ -225,8 +212,8 @@ function onTdDblclick(index: number, key: string, _e: Event) {
   };
   editValue.value = cell.value === undefined || cell.value === null ? "" : String(cell.value);
   nextTick(() => {
-    editInputEl?.focus();
-    editInputEl?.select();
+    editInputEl.value?.focus();
+    editInputEl.value?.select();
   });
 }
 
@@ -236,7 +223,7 @@ function onEditKeydown(e: KeyboardEvent) {
     input.blur();
   } else if (e.key === "Escape") {
     e.preventDefault();
-    editing.value = null; // 不提交，恢复原值
+    editing.value = null;
   } else if (e.key === "Shift") {
     e.stopPropagation();
   }
@@ -256,7 +243,6 @@ function onEditBlur() {
   table.commitEdit(ed.index, ed.key, newValue);
 }
 
-/* ---------------- 拖拽排序 ---------------- */
 
 const dragIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
@@ -278,7 +264,6 @@ function onDrop(index: number, _e: DragEvent) {
   table.onRowsRearranged(order);
 }
 
-/* ---------------- 表格内链接跳转 ---------------- */
 
 function onBodyClick(e: MouseEvent) {
   const target = (e.target as HTMLElement).closest?.(".mcmodder-table-goto");
@@ -288,7 +273,6 @@ function onBodyClick(e: MouseEvent) {
   if (key) table.onGotoClick(key, value);
 }
 
-/* ---------------- 生命周期 ---------------- */
 
 watch(version, async () => {
   updateVisibleRange();
@@ -352,7 +336,6 @@ onBeforeUnmount(() => {
 .mcmodder-table tr.drag-over td {
   box-shadow: 0 2px 0 0 var(--mcmodder-color-accent) inset;
 }
-/* 空态 */
 .mcmodder-table-empty {
   height: 100px;
   min-height: 100px;
@@ -367,7 +350,6 @@ onBeforeUnmount(() => {
   color: var(--mcmodder-color-text-dark3);
   text-align: center;
 }
-/* 选中行 */
 .mcmodder-table tr.selected {
   box-shadow: 0 0 0 3px var(--mcmodder-color-accent-transparent1) inset;
   backdrop-filter: sepia(40%);
@@ -385,7 +367,6 @@ onBeforeUnmount(() => {
 .mcmodder-table tr.mcmodder-table-unsaved-tr.selected::after {
   color: var(--mcmodder-color-primary-dark1);
 }
-/* 未保存状态 */
 .mcmodder-table-unsaved-td {
   font-weight: bold;
   background-color: var(--mcmodder-color-primary-transparent1);
@@ -393,7 +374,6 @@ onBeforeUnmount(() => {
 .mcmodder-table-unsaved-tr {
   background-color: var(--mcmodder-color-primary-transparent1);
 }
-/* 悬停高亮 */
 :host-context(html.dark) .mcmodder-table-mouseover-tr > td:not(.mcmodder-table-mouseover-td) {
   backdrop-filter: brightness(125%);
 }
@@ -406,7 +386,12 @@ onBeforeUnmount(() => {
 .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
   backdrop-filter: brightness(95%);
 }
-/* 编辑输入框 */
+.mcmodder-table td img {
+  margin-bottom: 0;
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+}
 .form-control.mcmodder-table-input {
   width: 100%;
   padding: .1em;
@@ -416,7 +401,6 @@ onBeforeUnmount(() => {
   color: var(--mcmodder-color-text);
   font-size: 14px;
 }
-/* 加载遮罩 */
 .mcmodder-table-loading-overlay {
   width: 100%;
   height: 100%;

@@ -61,6 +61,12 @@ export default defineConfig({
         ]
       },
       build: {
+        cssSideEffects: (css) => {
+          const style = document.createElement("style");
+          style.setAttribute("data-mcmodder-vue-css", "");
+          style.textContent = css;
+          (document.head || document.documentElement).appendChild(style);
+        },
         externalGlobals: {
           "codemirror": "CodeMirror",
           "turndown": "TurndownService",
