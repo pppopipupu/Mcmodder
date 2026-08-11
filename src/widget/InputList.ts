@@ -12,6 +12,8 @@ export class InputList {
   private recommendationList: InputRecommendation[] = [];
   private selected = 0;
   private listLength = 0;
+  private isFocused = false;
+  private canCreateNew = false;
   private readonly onInitRecommendation: InputListOnInitRecommendation;
   private readonly onModifyRecommendation?: InputListOnModifyRecommendation;
   private readonly delimiter?: string;
@@ -55,7 +57,13 @@ export class InputList {
     this.delimiter = delimiter;
     this.hideBeforeInput = hideBeforeInput ?? false;
 
-    this.inputNode.focus(_e => {
+    this.inputNode
+    .click(_e => {
+      if (this.isFocused) {
+        this.updateRecommendableList(this.getSelectionValue());
+      }
+    })
+    .focus(_e => {
       this.recommendationList = this.onInitRecommendation()
       .map(e => {
         if (typeof e === "string") {
@@ -64,6 +72,7 @@ export class InputList {
         return e;
       });
       this.updateRecommendableList(this.getSelectionValue());
+      this.isFocused = true;
     })
     .keydown(e => {
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -73,12 +82,12 @@ export class InputList {
     .keyup(e => {
       if (e.key === "ArrowUp") {
         let selected = this.selected - 1;
-        if (selected < 0) selected = this.listLength - 1;
+        if (selected < 0) selected = this.listLength - (this.canCreateNew ? 0 : 1);
         this.updateSelection(selected);
       }
       else if (e.key === "ArrowDown") {
         let selected = this.selected + 1;
-        if (selected >= this.listLength) selected = 0;
+        if (selected >= this.listLength + (this.canCreateNew ? 1 : 0)) selected = 0;
         this.updateSelection(selected);
       }
       else if (e.key === "Tab" || e.key === "Enter") {
@@ -93,6 +102,7 @@ export class InputList {
       }
     })
     .blur(_e => {
+      this.isFocused = false;
       setTimeout(() => this.inputList.hide().empty(), 100);
     });
 
@@ -101,7 +111,7 @@ export class InputList {
       const target = e.currentTarget;
 
       if (target.classList.contains("mcmodder-input-new")) {
-        const value = this.getSelectionValue();
+        const value = this.getSelectionValue(true);
         if (!value) {
           return;
         }
@@ -149,16 +159,16 @@ export class InputList {
     });
   }
 
-  private getSectionIndex(vals: string[], pos: number, delimiter: string) {
+  private getSectionIndex(vals: string[], pos: number, delimiter: string): [idx: number, innerPos: number] {
     for (let i = 0, j = 0; i < vals.length; j += vals[i++].length + delimiter.length) {
       if (pos >= j && pos < j + vals[i].length + delimiter.length) {
-        return i;
+        return [i, pos - j];
       }
     }
-    return -1;
+    return [-1, -1];
   }
 
-  private getSelectionValue() {
+  private getSelectionValue(isCompletely = false) {
     const val = this.input.value;
     if (this.delimiter === undefined) {
       return val;
@@ -168,19 +178,25 @@ export class InputList {
       return "";
     }
     const vals = val.split(this.delimiter);
-    const idx = this.getSectionIndex(vals, pos, this.delimiter);
-    return idx >= 0 ? vals[idx] : "";
+    const [idx, innerPos] = this.getSectionIndex(vals, pos, this.delimiter);
+    return idx >= 0 ? isCompletely ? vals[idx] : vals[idx].slice(0, innerPos) : "";
   }
 
   private setSelectionValue(content: string, isContinuously = false) {
     let val = this.input.value;
+    let newPos: number | null = null;
+    const pos = this.input.selectionStart;
     if (this.delimiter != undefined) {
-      const pos = this.input.selectionStart;
       if (pos != null) {
         const vals = val.split(this.delimiter);
-        const idx = this.getSectionIndex(vals, pos, this.delimiter);
+        const [idx, innerPos] = this.getSectionIndex(vals, pos, this.delimiter);
         if (idx >= 0) {
-          vals[idx] = content;
+          const suffix = vals[idx].slice(innerPos);
+          vals[idx] = content + suffix;
+          newPos = pos - innerPos + content.length;
+          if (isContinuously && suffix) {
+            isContinuously = false;
+          }
         }
         val = vals.join(this.delimiter);
       }
@@ -189,10 +205,19 @@ export class InputList {
       }
     }
     else {
-      val = content;
+      if (pos != null) {
+        const suffix = content.slice(pos);
+        val = content + suffix;
+      }
+      else {
+        val = content;
+      }
     }
 
     this.inputNode.val(val).change();
+    if (newPos != null) {
+      this.input.setSelectionRange(newPos, newPos);
+    }
     if (isContinuously) {
       this.inputNode.focus();
     } else {
@@ -230,12 +255,12 @@ export class InputList {
   private renderRecommendationList(recommendableList: InputRecommendation[]) {
     this.inputList.empty();
     recommendableList.forEach((entry, index) => {
-      let html = entry.html ?? entry.value;
+      let html = entry.html ?? McmodderUtils.escapeHTML(entry.value);
       if (entry.html != undefined && entry.showValue) {
         html += `&nbsp;<span class="item-ename">${ entry.value }</span>`;
       }
       $(`<a class="mcmodder-input-option" data-value="${ entry.value }" data-index="${ index }">`)
-      .html(html)
+      .html(`<span class="text">${ html }</span>`)
       .appendTo(this.inputList);
     });
     this.listLength = recommendableList.length;
@@ -245,9 +270,12 @@ export class InputList {
         $(`<a class="mcmodder-input-delete"><i class="fa fa-close" /></a>`).appendTo(e);
       });
       if (this.getSelectionValue()) {
-        $(`<a class="mcmodder-input-option mcmodder-input-new" data-index=-1>`)
+        $(`<a class="mcmodder-input-option mcmodder-input-new" data-index=${ this.listLength }>`)
         .html(`<span class="mcmodder-slim-dark">+ 保存为快捷输入项</span>`)
         .appendTo(this.inputList);
+        this.canCreateNew = true;
+      } else {
+        this.canCreateNew = false;
       }
     }
 
@@ -268,7 +296,10 @@ export class InputList {
 
   private updateSelection(index: number) {
     this.getOptionNode(this.selected).removeClass("selected");
-    this.getOptionNode(index).addClass("selected");
+    this.getOptionNode(index).addClass("selected").get(0).scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
     this.selected = index;
   }
 }

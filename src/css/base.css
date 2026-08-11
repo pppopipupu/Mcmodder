@@ -2360,7 +2360,7 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
 .mcmodder-input-list {
   position: absolute;
   top: calc(100% + .2em);
-  min-width: 100%;
+  width: 100%;
   background-color: var(--mcmodder-color-background);
   backdrop-filter: blur(10px);
   max-height: 300px;
@@ -2379,6 +2379,11 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
   border-radius: calc(var(--mcmodder-width-radius) * .5);
   min-height: 24px;
   color: var(--mcmodder-color-text);
+}
+.mcmodder-input-option .text {
+  max-width: calc(100% - 2 * var(--mcmodder-width-padding-3));
+  overflow: clip;
+  text-overflow: ellipsis;
 }
 .mcmodder-input-delete {
   color: var(--mcmodder-color-text-dark2);

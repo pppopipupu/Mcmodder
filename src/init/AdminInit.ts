@@ -221,7 +221,10 @@ export class AdminInit extends McmodderInit {
 
               new InputList(reasonInput, this.parent.utils, "verifyReasons", "；", true)
               .getInstance()
-              .css("display", "inline")
+              .css({
+                display: "inline-block",
+                width: "100%"
+              })
               .parent()
               .next()
               .css("margin-top", 0);
