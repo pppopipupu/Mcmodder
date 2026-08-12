@@ -136,6 +136,13 @@ export interface McmodderItemData {
 }
 export type McmodderItemList = McmodderItemData[];
 
+export interface McmodderUnpurifiedItemData extends McmodderItemData {
+  /** 对应原 maxStackSize */
+  maxStacksSize?: number;
+  /** 对应原 creativeTabName */
+  CreativeTabName?: string;
+}
+
 export interface McmodderClassData {
   id: number;
   name: string;

@@ -119,6 +119,8 @@ export class ConfigLoader {
     .addCheckboxConfig("fastUrge", "快速催审", "在待审列表中显示“一键催审”按钮。")
     .addCheckboxConfig("enableStructureEditor", "结构编辑器", "启用结构编辑器。")
     .addCheckboxConfig("enableJsonHelper", "JSON导入辅助", "启用 JSON 导入辅助工具。")
+    .addDropdownConfig("itemRepository", "JSON存储方式", "配置使用 JSON 导入辅助工具时，JSON 应当以何种方式存储。（注意：切换此配置时，已存储的 JSON 文件不会自动同步，请手动转移）",
+      0, { 0: "脚本存储", 1: "IndexedDB (推荐)" })
     .addNumberConfig("minimumRequestInterval", "最短发包间隔", "设置脚本全局发送请求的最短间隔，单位为 ms。",
       750, [500, null])
     .addCheckboxConfig("lieqi", "猎奇仙人", "猎奇猎奇猎奇！！！")
