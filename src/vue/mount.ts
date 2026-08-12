@@ -1,4 +1,4 @@
-import { createApp, type App, type Component, type Ref } from "vue";
+import { createApp, type App, type Component } from "vue";
 
 export interface MountedVueApp {
   app: App;
@@ -134,17 +134,5 @@ export function mountVueApp<Props extends Record<string, any> = Record<string, a
       app.unmount();
       host.remove();
     }
-  };
-}
-
-export function appendToShadow(shadowHost: Element | ShadowRoot | null, node: Element) {
-  const root = shadowHost instanceof ShadowRoot ? shadowHost : (shadowHost as HTMLElement | null)?.shadowRoot;
-  (root || shadowHost || document.body).appendChild(node);
-  return node;
-}
-
-export function toTemplateRef(el: Ref<HTMLElement | null>) {
-  return (node: Element | null) => {
-    (el as Ref<HTMLElement | null>).value = node as HTMLElement | null;
   };
 }

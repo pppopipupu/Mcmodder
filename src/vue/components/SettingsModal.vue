@@ -35,7 +35,7 @@
                     <h3 v-if="query || g.sections.length > 1" class="group-heading">{{ g.label }}</h3>
                     <div v-for="s in g.sections" :key="s.id" class="group-card">
                       <div class="group-title-row">
-                        <h4 class="group-title" v-html="highlightText(s.title)" />
+                        <h4 class="group-title" v-html="s.titleHtml" />
                         <template v-if="s.id === 'update'">
                           <button class="btn btn-accent" id="mcmodder-update-check-manual" @click="checkUpdate">立即检查更新</button>
                           <span :ref="el => (timerSlots.autoCheckUpdate = el as HTMLElement | null)" class="mcmodder-settings-timer-slot" />
@@ -46,123 +46,17 @@
                       <div v-for="entry in s.keys" :key="entry" class="setting-item">
                         <div class="setting-info">
                           <div class="setting-title-row">
-                            <span class="title" v-html="highlightText(entriesMap[entry]?.data.title ?? '')" />
+                            <span class="title" v-html="entriesMap[entry]?.titleHtml ?? ''" />
                           </div>
-                          <p class="text-muted" v-html="highlightHtml(entriesMap[entry]?.description ?? '')" />
+                          <p class="text-muted" v-html="entriesMap[entry]?.descriptionHtml ?? ''" />
                         </div>
                         <div class="setting-control">
-                          <label v-if="entryData(entry)?.type === McmodderInputType.CHECKBOX" class="switch">
-                            <input
-                              type="checkbox"
-                              :id="`settings-${ entry }`"
-                              :checked="!!getValue(entry)"
-                              @change="commitValue(entry, ($event.target as HTMLInputElement).checked)"
-                            >
-                            <span class="switch-slider" />
-                          </label>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.NUMBER">
-                            <div class="mcmodder-numberinput-container">
-                              <input
-                                class="form-control"
-                                :placeholder="entryData(entry)?.title + '..'"
-                                :value="formatNumber(getValue(entry))"
-                                @change="commitNumber(entry, $event)"
-                              >
-                            </div>
-                          </template>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.SLIDER">
-                            <div class="mcmodder-numberinput-container">
-                              <input
-                                class="form-control"
-                                :placeholder="entryData(entry)?.title + '..'"
-                                :value="formatNumber(sliderLive[entry] ?? getValue(entry))"
-                                @change="commitNumber(entry, $event)"
-                              >
-                              <div class="mcmodder-slider-container" :ref="el => (sliderBars[entry] = el as HTMLElement)">
-                                <div
-                                  class="mcmodder-slider-bar"
-                                  @mousedown="onSliderBarMousedown(entry, $event)"
-                                  @mousemove="onSliderMousemove(entry, $event)"
-                                  @mouseup="onSliderMouseup(entry)"
-                                >
-                                  <div
-                                    class="mcmodder-slider-tap"
-                                    :class="{ focus: sliderDraggingKey === entry }"
-                                    :style="{ left: getSliderRate(entry) * 100 + '%' }"
-                                    @mousedown="onSliderTapMousedown(entry, $event)"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </template>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.TEXT">
-                            <input
-                              class="form-control"
-                              :value="getValue(entry)"
-                              @change="commitText(entry, $event)"
-                            >
-                          </template>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.COLORPICKER">
-                            <input
-                              class="form-control mcmodder-colorpicker"
-                              type="color"
-                              :value="getValue(entry)"
-                              @change="commitValue(entry, ($event.target as HTMLInputElement).value)"
-                            >
-                          </template>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.KEYBIND">
-                            <input
-                              class="form-control mcmodder-keybind-input"
-                              :value="keybindDisplay(entry)"
-                              @focus="keybindOnFocus(entry)"
-                              @keydown="keybindOnKeydown(entry, $event)"
-                              @keyup="keybindOnKeyup(entry, $event)"
-                              @blur="keybindOnBlur(entry)"
-                            >
-                          </template>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.DROPDOWN_MENU">
-                            <select
-                              class="mcmodder-select"
-                              :value="getValue(entry)"
-                              @change="commitValue(entry, Number(($event.target as HTMLSelectElement).value))"
-                            >
-                              <option
-                                v-for="(label, num) in entryData(entry)?.range"
-                                :key="num"
-                                :value="num"
-                              >{{ label }}{{ Number(num) === entryData(entry)?.value ? " (默认)" : "" }}</option>
-                            </select>
-                          </template>
-
-                          <template v-else-if="entryData(entry)?.type === McmodderInputType.DROPDOWN_TEXT_MENU">
-                            <div class="mcmodder-input-container">
-                              <input
-                                class="form-control"
-                                :value="getValue(entry)"
-                                @focus="openSuggestions(entry)"
-                                @input="filterSuggestions(entry, $event)"
-                                @blur="closeSuggestions(entry)"
-                              >
-                              <div v-if="suggestionOpen[entry]" class="mcmodder-input-list">
-                                <a
-                                  v-for="(rec, i) in (entryData(entry)?.recommendation || []).map(normalizeRecommendation)"
-                                  :key="i"
-                                  href="javascript:void(0)"
-                                  @mousedown.prevent="commitSuggestion(entry, rec.value)"
-                                >
-                                  <span v-if="rec.html" v-html="rec.html" />
-                                  <span v-else>{{ rec.value }}{{ isDefaultRecommendation(entry, rec.value) ? " (默认)" : "" }}</span>
-                                </a>
-                                <span v-if="!(entryData(entry)?.recommendation || []).length" class="empty">没有匹配的推荐项...</span>
-                              </div>
-                            </div>
-                          </template>
+                          <SettingInput
+                            :entry="entry"
+                            :data="entriesMap[entry]?.data"
+                            :value="getValue(entry)"
+                            @commit="commitValue(entry, $event)"
+                          />
 
                           <template v-if="entry === 'useSupabase' && !!getValue('useSupabase')">
                             <button class="btn btn-accent" id="mcmodder-auth-manual" :disabled="authing" @click="manualAuth">
@@ -204,18 +98,19 @@
 
 <script setup lang="ts">
 import { GM_getValue, GM_setValue } from "$";
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from "vue";
 import { Mcmodder } from "../../Mcmodder";
 import { McmodderConfigUtils, McmodderInputType } from "../../config/ConfigUtils";
 import { McmodderConfigResourceInteractor } from "../../config/ConfigResourceInteractor";
 import { McmodderConfigResourceFileListInteractor } from "../../config/ConfigResouceFileListInteractor";
-import type { InputSimplifiedRecommendation, InputValueNumericRange, McmodderClassRelationData, McmodderConfigData, McmodderKeyData, McmodderRankDisplayData, McmodderRankStorageData, McmodderSplashData, SupabaseAuthenticatorResponse, SupabaseSyncSettingsResponse } from "../../types";
+import type { InputValueNumericRange, McmodderClassRelationData, McmodderConfigData, McmodderRankDisplayData, McmodderRankStorageData, McmodderSplashData, SupabaseAuthenticatorResponse, SupabaseSyncSettingsResponse } from "../../types";
 import { McmodderTable } from "../../table/Table";
 import { McmodderUtils } from "../../Utils";
 import { McmodderValues } from "../../Values";
 import { McmodderTimer } from "../../widget/Timer";
 import { useConfig } from "../composables/useConfig";
 import { OPEN_SETTINGS_EVENT } from "../mount";
+import SettingInput from "./SettingInput.vue";
 
 const props = defineProps<{
   parent: Mcmodder;
@@ -240,13 +135,10 @@ const entries = computed<string[]>(() => {
   return list;
 });
 
-function entryData(key: string): McmodderConfigData | undefined {
-  return cfgutils.data[key];
-}
-
 interface SettingsSection {
   id: string;
   title: string;
+  titleHtml?: string;
   keys: string[];
 }
 
@@ -332,9 +224,19 @@ const query = ref("");
 const version = McmodderValues.mcmodderVersion;
 
 const entriesMap = computed<Record<string, SettingsEntryLike>>(() => {
+  const q = query.value.trim();
+  const markStyle = q ? highlightMarkStyle() : "";
   const map: Record<string, SettingsEntryLike> = {};
   entries.value.forEach(key => {
-    map[key] = { key, data: cfgutils.data[key], description: buildDescription(cfgutils.data[key]) };
+    const data = cfgutils.data[key];
+    const description = buildDescription(data);
+    map[key] = {
+      key,
+      data,
+      description,
+      titleHtml: q ? highlightText(data.title, markStyle) : data.title,
+      descriptionHtml: q ? highlightHtml(description, markStyle) : description
+    };
   });
   return map;
 });
@@ -360,10 +262,12 @@ function sidebarCount(g: SettingsGroup) {
 }
 
 const displayedGroups = computed<SettingsGroup[]>(() => {
+  const q = query.value.trim();
+  const markStyle = q ? highlightMarkStyle() : "";
   const filterSections = (g: SettingsGroup): SettingsGroup => ({
     ...g,
     sections: g.sections
-      .map(s => ({ ...s, keys: s.keys.filter(matchesEntry) }))
+      .map(s => ({ ...s, keys: s.keys.filter(matchesEntry), titleHtml: q ? highlightText(s.title, markStyle) : s.title }))
       .filter(s => s.id === "data" || s.keys.length)
   });
   if (query.value.trim()) return groups.value.map(filterSections).filter(g => g.sections.length);
@@ -384,13 +288,13 @@ function highlightMarkStyle() {
   return `background-color:${ bg || "rgba(172, 219, 236, .35)" };color:${ fg || "#58b6d8" };border-radius:2px;padding:0 1px`;
 }
 
-function highlightText(text: string): string {
+function highlightText(text: string, markStyle: string): string {
   const q = query.value.trim();
   if (!q) return text;
-  return escapeHtml(text).replace(new RegExp(`(${ escapeHtml(escapeRegExp(q)) })`, "gi"), `<mark style="${ highlightMarkStyle() }">$1</mark>`);
+  return escapeHtml(text).replace(new RegExp(`(${ escapeHtml(escapeRegExp(q)) })`, "gi"), `<mark style="${ markStyle }">$1</mark>`);
 }
 
-function highlightHtml(html: string): string {
+function highlightHtml(html: string, markStyle: string): string {
   const q = query.value.trim();
   if (!q) return html;
   const div = document.createElement("div");
@@ -399,7 +303,6 @@ function highlightHtml(html: string): string {
   const textNodes: Text[] = [];
   while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
   const lowerQ = q.toLowerCase();
-  const markStyle = highlightMarkStyle();
   textNodes.forEach(t => {
     const parts = t.nodeValue?.split(new RegExp(`(${ escapeRegExp(q) })`, "i")) ?? [""];
     if (parts.length <= 1) return;
@@ -438,6 +341,8 @@ interface SettingsEntryLike {
   key: string;
   data: McmodderConfigData;
   description: string;
+  titleHtml: string;
+  descriptionHtml: string;
 }
 
 function getValue(key: string) {
@@ -449,226 +354,6 @@ function getValue(key: string) {
 
 function commitValue(key: string, value: any) {
   set(key, value);
-}
-
-function formatNumber(value: any) {
-  if (value === undefined || value === null || value === "") return "";
-  const num = Number(value);
-  return isNaN(num) ? "" : String(Number(num.toFixed(10)));
-}
-
-function getRange(key: string): InputValueNumericRange {
-  const range = entryData(key)?.range as InputValueNumericRange | undefined;
-  return range || [null, null];
-}
-
-function commitNumber(key: string, e: Event) {
-  const input = e.target as HTMLInputElement;
-  const newValue = Number(input.value);
-  const current = getValue(key);
-  const [min, max] = getRange(key);
-  const showError = (msg: string) => {
-    McmodderUtils.commonMsg(msg, false);
-    input.value = formatNumber(current);
-  };
-  if (isNaN(newValue)) {
-    showError("请输入一个正确的数值~");
-    return;
-  }
-  if (newValue === Number(current)) return;
-  if (min != null && newValue < min) {
-    showError(`您输入的数值 (${ newValue.toLocaleString() }) 低于允许的最小值 (${ min.toLocaleString() })，请重新设置~`);
-    return;
-  }
-  if (max != null && newValue > max) {
-    showError(`您输入的数值 (${ newValue.toLocaleString() }) 高于允许的最大值 (${ max.toLocaleString() })，请重新设置~`);
-    return;
-  }
-  commitValue(key, newValue);
-}
-
-function commitText(key: string, e: Event) {
-  const input = e.target as HTMLInputElement;
-  const newValue = input.value.trim();
-  if (newValue === getValue(key)) {
-    input.value = getValue(key);
-    return;
-  }
-  commitValue(key, newValue);
-}
-
-
-const sliderBars = reactive<Record<string, HTMLElement | null>>({});
-const sliderLive = reactive<Record<string, number>>({});
-const sliderDraggingKey = ref<string | null>(null);
-let sliderDragOffset = 0;
-
-function getSliderRange(key: string): [number, number] {
-  const [min, max] = getRange(key);
-  return [min ?? 0, max ?? 1];
-}
-
-function getSliderRate(key: string) {
-  const [min, max] = getRange(key);
-  if (min == null || max == null || max <= min) return 0;
-  const value = sliderLive[key] ?? getValue(key);
-  return McmodderUtils.clamp((Number(value) - min) / (max - min));
-}
-
-function onSliderTapMousedown(key: string, e: MouseEvent) {
-  const bar = sliderBars[key];
-  if (!bar) return;
-  sliderDraggingKey.value = key;
-  const tap = e.currentTarget as HTMLElement;
-  const tapCenter = tap.getBoundingClientRect().left - bar.getBoundingClientRect().left + tap.getBoundingClientRect().width / 2;
-  sliderDragOffset = e.screenX - tapCenter - bar.getBoundingClientRect().left;
-  e.stopPropagation();
-  e.preventDefault();
-}
-
-function onSliderBarMousedown(key: string, e: MouseEvent) {
-  sliderDraggingKey.value = key;
-  sliderDragOffset = 0;
-  e.preventDefault();
-  updateSliderFromMouse(key, e);
-}
-
-function onSliderMousemove(key: string, e: MouseEvent) {
-  if (sliderDraggingKey.value !== key) return;
-  updateSliderFromMouse(key, e);
-}
-
-function onSliderMouseup(key: string) {
-  if (sliderDraggingKey.value !== key) return;
-  sliderDraggingKey.value = null;
-  const value = sliderLive[key];
-  if (value !== undefined && value !== Number(getValue(key))) {
-    commitValue(key, value);
-  }
-}
-
-function updateSliderFromMouse(key: string, e: MouseEvent) {
-  const bar = sliderBars[key];
-  if (!bar) return;
-  const [min, max] = getSliderRange(key);
-  const barLeft = bar.getBoundingClientRect().left;
-  const barWidth = bar.getBoundingClientRect().width;
-  const dragPos = e.screenX + sliderDragOffset - barLeft;
-  const rate = McmodderUtils.clamp(dragPos / barWidth);
-  const precision = max - min === 1 ? 0.01 : 1;
-  const rawValue = min + (max - min) * rate;
-  const value = Math.round(rawValue / precision) * precision;
-  sliderLive[key] = value;
-}
-
-
-interface KeybindState {
-  lastData?: McmodderKeyData;
-  queue: number;
-  finished: boolean;
-}
-
-const keybindStates = reactive<Record<string, KeybindState>>({});
-
-function getKeybindState(key: string): KeybindState {
-  if (!keybindStates[key]) {
-    keybindStates[key] = { queue: 0, finished: false };
-  }
-  return keybindStates[key];
-}
-
-function keybindDisplay(key: string) {
-  return McmodderUtils.keyToString(getValue(key) || {});
-}
-
-function keybindOnFocus(key: string) {
-  const state = getKeybindState(key);
-  state.lastData = undefined;
-  state.queue = 0;
-  state.finished = false;
-}
-
-function keybindOnKeydown(key: string, e: KeyboardEvent) {
-  e.preventDefault();
-  e.stopPropagation();
-  const state = getKeybindState(key);
-  if (e.key === state.lastData?.key) return;
-  if (e.key === "Escape") {
-    state.lastData = undefined;
-    state.queue = 0;
-    state.finished = false;
-    (e.target as HTMLInputElement).blur();
-    return;
-  }
-  state.lastData = e as unknown as McmodderKeyData;
-  state.queue++;
-  (e.target as HTMLInputElement).value = McmodderUtils.keyToString(e as unknown as McmodderKeyData);
-  if (e.metaKey && !["Control", "Alt", "Meta", "Shift"].includes(e.key)) {
-    keybindOnKeyup(key, e);
-  }
-}
-
-function keybindOnKeyup(key: string, e: KeyboardEvent) {
-  e.preventDefault();
-  const state = getKeybindState(key);
-  if (--state.queue) return;
-  const r = state.lastData;
-  if (!r) return;
-  const d: McmodderKeyData = {};
-  if (r.ctrlKey) d.ctrlKey = true;
-  if (r.shiftKey) d.shiftKey = true;
-  if (r.altKey) d.altKey = true;
-  if (r.metaKey) d.metaKey = true;
-  d.key = r.key;
-  if (r.keyCode && r.keyCode >= 97 && r.keyCode <= 122) r.keyCode -= 32;
-  d.keyCode = r.keyCode;
-  state.finished = true;
-  commitValue(key, d);
-  (e.target as HTMLInputElement).blur();
-}
-
-function keybindOnBlur(key: string) {
-  const state = getKeybindState(key);
-  if (state.finished) return;
-  commitValue(key, {});
-}
-
-
-const suggestionOpen = reactive<Record<string, boolean>>({});
-const suggestionList = reactive<Record<string, InputSimplifiedRecommendation[]>>({});
-
-function normalizeRecommendation(rec: InputSimplifiedRecommendation): { html?: string; value: string } {
-  if (typeof rec === "string") return { value: rec };
-  return { html: rec.html, value: rec.value };
-}
-
-function isDefaultRecommendation(key: string, value: string) {
-  return entryData(key)?.value === value;
-}
-
-function openSuggestions(key: string) {
-  suggestionOpen[key] = true;
-  filterSuggestions(key, { target: { value: getValue(key) } } as unknown as Event);
-}
-
-function filterSuggestions(key: string, e: Event) {
-  const text = String((e.target as HTMLInputElement).value || "").trim().toLowerCase();
-  const list = (entryData(key)?.recommendation || []).filter(rec => {
-    const { value } = normalizeRecommendation(rec);
-    return !text || value.toLowerCase().includes(text);
-  });
-  suggestionList[key] = list;
-}
-
-function closeSuggestions(key: string) {
-  window.setTimeout(() => {
-    suggestionOpen[key] = false;
-  }, 150);
-}
-
-function commitSuggestion(key: string, value: string) {
-  suggestionOpen[key] = false;
-  commitValue(key, value);
 }
 
 
@@ -875,7 +560,7 @@ watch(
 );
 
 
-const dataContainer = ref<HTMLElement | null>(null);
+const dataContainer = useTemplateRef<HTMLElement>("dataContainer");
 let dataManagers: McmodderConfigResourceInteractor<any>[] | null = null;
 
 /** 管理器实例与实例内一次性绑定（数据与事件不随弹窗开关销毁） */
@@ -1415,30 +1100,6 @@ function emptyScheduleRequest() {
   flex: 0 1 auto;
   min-width: 260px;
 }
-.setting-control .form-control {
-  display: inline-block;
-  width: 260px;
-  max-width: 100%;
-  height: 34px;
-  padding: 6px 12px;
-  background-color: var(--mcmodder-color-background);
-  border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: 10px;
-  color: var(--mcmodder-color-text);
-  font-size: 14px;
-  line-height: 1.428;
-  transition: border-color .2s ease, box-shadow .2s ease;
-}
-.setting-control .form-control:focus {
-  border-color: var(--mcmodder-color-accent);
-  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
-  outline: none;
-}
-.setting-control .form-control.mcmodder-colorpicker {
-  width: 4.5em;
-  height: 2.4em;
-  padding: 2px;
-}
 .setting-control .btn {
   margin: 0;
 }
@@ -1447,139 +1108,6 @@ function emptyScheduleRequest() {
   font-size: 13px;
   margin: .35em 0 0 0;
   line-height: 1.7;
-}
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex: none;
-  cursor: var(--mcmodder-cursor-hand);
-}
-.switch input[type="checkbox"] {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-}
-.switch .switch-slider {
-  position: absolute;
-  inset: 0;
-  background-color: var(--mcmodder-color-background-dark3);
-  border-radius: 12px;
-  transition: background-color .25s ease;
-}
-.switch .switch-slider::before {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 18px;
-  height: 18px;
-  background-color: #fff;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
-  transition: transform .25s cubic-bezier(.4, 1.2, .6, 1);
-}
-.switch input[type="checkbox"]:checked + .switch-slider {
-  background: linear-gradient(45deg, var(--mcmodder-color-primary), var(--mcmodder-color-accent));
-}
-.switch input[type="checkbox"]:checked + .switch-slider::before {
-  transform: translateX(20px);
-}
-.switch input[type="checkbox"]:focus-visible + .switch-slider {
-  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
-}
-.switch input[type="checkbox"]:disabled + .switch-slider {
-  opacity: .6;
-  cursor: not-allowed;
-}
-.mcmodder-numberinput-container {
-  display: inline-block;
-}
-.mcmodder-numberinput-container .form-control {
-  width: 180px;
-}
-.mcmodder-slider-container {
-  display: inline-block;
-  width: 240px;
-  vertical-align: middle;
-  margin-left: .5em;
-}
-.mcmodder-slider-bar {
-  position: relative;
-  height: 6px;
-  background-color: var(--mcmodder-color-background-dark3);
-  border-radius: 3px;
-  cursor: var(--mcmodder-cursor-hand);
-}
-.mcmodder-slider-tap {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, var(--mcmodder-color-primary), var(--mcmodder-color-accent));
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
-  margin-left: -8px;
-}
-.mcmodder-slider-tap.focus {
-  box-shadow: 0 0 0 .25em var(--mcmodder-color-accent-transparent2);
-}
-.mcmodder-keybind-input {
-  font-family: Consolas, "Courier New", monospace !important;
-}
-.mcmodder-select {
-  height: 34px;
-  padding: 4px 10px;
-  background-color: var(--mcmodder-color-background);
-  border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: 10px;
-  color: var(--mcmodder-color-text);
-  font-size: 14px;
-  max-width: 100%;
-  transition: border-color .2s ease, box-shadow .2s ease;
-}
-.mcmodder-select:focus {
-  border-color: var(--mcmodder-color-accent);
-  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
-  outline: none;
-}
-.mcmodder-input-container {
-  position: relative;
-  display: inline-block;
-}
-.mcmodder-input-container .form-control {
-  width: 260px;
-}
-.mcmodder-input-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 10;
-  max-height: 220px;
-  overflow-y: auto;
-  background-color: var(--mcmodder-color-background-dark1);
-  border: 1px solid var(--mcmodder-color-background-dark3);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
-}
-.mcmodder-input-list a {
-  display: block;
-  padding: 8px 12px;
-  color: var(--mcmodder-color-text);
-  text-decoration: none;
-}
-.mcmodder-input-list a:hover {
-  background-color: var(--mcmodder-color-accent-transparent2);
-}
-.mcmodder-input-list .empty {
-  display: block;
-  padding: 8px 12px;
-  color: var(--mcmodder-color-text-dark3);
 }
 .mcmodder-auth-user {
   font-size: 13px;

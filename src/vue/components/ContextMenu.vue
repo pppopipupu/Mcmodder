@@ -33,15 +33,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, useTemplateRef } from "vue";
 import { McmodderUtils } from "../../Utils";
 import type { ContextMenuEntry, ContextMenuExpose } from "../../widget/ContextMenu";
-
-export interface ContextMenuExposeInner {
-  show: (x: number, y: number, activeIndexList: number[], entries: ContextMenuEntry[], event: unknown) => Promise<void>;
-  hide: () => void;
-  getActiveState: () => boolean;
-}
 
 const props = defineProps<{
   container: HTMLElement;
@@ -61,7 +55,7 @@ const visibleItems = ref<ContextMenuEntry[]>([]);
 const activeIndexList = ref<number[]>([]);
 let contextmenuEvent: unknown = null;
 
-const root = ref<HTMLElement | null>(null);
+const root = useTemplateRef<HTMLElement>("root");
 let hideTimer: number | undefined;
 
 const pressArrowKeyBeforeMouseMove = ref(true);

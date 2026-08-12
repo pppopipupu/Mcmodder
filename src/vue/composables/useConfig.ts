@@ -1,4 +1,4 @@
-import { reactive, watch } from "vue";
+import { reactive, readonly, watch } from "vue";
 import { GM_addValueChangeListener, GM_getValue, GM_setValue } from "$";
 
 export type SettingsObject = Record<string, any>;
@@ -61,5 +61,5 @@ export function useConfig(storageKey = "mcmodderSettings") {
     }
   }
 
-  return { config, get, set };
+  return { config: readonly(config), get, set };
 }

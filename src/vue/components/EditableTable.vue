@@ -41,7 +41,7 @@
             >
               <input
                 v-if="isEditingCell(index, key)"
-                :ref="el => { editInputEl = el as HTMLInputElement | null }"
+                ref="editInputEl"
                 class="form-control mcmodder-table-input"
                 :type="editing!.type === McmodderInputType.NUMBER ? 'number' : 'text'"
                 :value="editValue"
@@ -65,9 +65,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from "vue";
 import { McmodderInputType } from "../../config/ConfigUtils";
-import type { EditableTableBridge, EditableTableExpose } from "../../table/EditableTable";
+import type { EditableTableCellDisplay, EditableTableBridge, EditableTableExpose } from "../../table/EditableTable";
 
 const props = defineProps<{
   table: EditableTableBridge;
@@ -82,7 +82,7 @@ const ROW_HEIGHT_DEFAULT = 48;
 
 
 const version = ref(0);
-const tbodyEl = ref<HTMLElement | null>(null);
+const tbodyEl = useTemplateRef<HTMLElement>("tbodyEl");
 const range = reactive({ l: -1, r: -1 });
 const topOffset = ref(0);
 const bottomOffset = ref(0);
@@ -150,8 +150,20 @@ function measureRowHeight() {
 }
 
 
+const visibleCells = computed<Record<string, EditableTableCellDisplay>>(() => {
+  version.value;
+  const keys = Object.keys(table.headConfigs);
+  const map: Record<string, EditableTableCellDisplay> = {};
+  for (const index of visibleRows.value) {
+    for (const key of keys) {
+      map[`${ index }:${ key }`] = table.getCellDisplay(index, key);
+    }
+  }
+  return map;
+});
+
 function cellDisplay(index: number, key: string) {
-  return table.getCellDisplay(index, key);
+  return visibleCells.value[`${ index }:${ key }`];
 }
 
 function rowClasses(index: number) {
@@ -195,7 +207,7 @@ function onTdMouseleave() {
 
 const editing = ref<{ index: number; key: string; initial: any; type: McmodderInputType } | null>(null);
 const editValue = ref("");
-const editInputEl = ref<HTMLInputElement | null>(null);
+const editInputEl = useTemplateRef<HTMLInputElement>("editInputEl");
 
 function isEditingCell(index: number, key: string) {
   return editing.value?.index === index && editing.value?.key === key;

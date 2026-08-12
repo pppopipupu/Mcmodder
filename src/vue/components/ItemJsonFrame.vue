@@ -2,7 +2,7 @@
   <div class="mcmodder-jsonframe">
     <div class="jsonframe-menu">
       <div class="jsonframe-menucontent">
-        <select class="jsonframe-select" :value="frame.activeFileName" @change="onFileChange($event)">
+        <select class="jsonframe-select" v-model="activeFileName">
           <option value="">选择一个JSON文件</option>
           <option v-for="name in selectionList" :key="name" :value="name">{{ name }}</option>
         </select>
@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, useTemplateRef } from "vue";
 import type { ItemJsonFrameApplication, ItemJsonFrameLogEntry } from "../../jsonframe/ItemJsonFrame";
 import type { ItemJsonFrame as ItemJsonFrameAdapter } from "../../jsonframe/ItemJsonFrame";
 import type { ItemJsonFrameExpose } from "../../jsonframe/ItemJsonFrame";
@@ -156,6 +156,14 @@ const stateVersion = ref(0);
 const selectionList = computed(() => {
   stateVersion.value;
   return frame.selectionList;
+});
+
+const activeFileName = computed({
+  get: () => {
+    stateVersion.value;
+    return frame.activeFileName;
+  },
+  set: (value: string) => frame.selectFile(value)
 });
 const fileInputId = `jsonframe_${ frame.id }-importLocal`;
 
@@ -229,17 +237,13 @@ const tools = computed<FrameTool[]>(() => {
   ];
 });
 
-function onFileChange(e: Event) {
-  frame.selectFile((e.target as HTMLSelectElement).value);
-}
-
 function onImportFile(tool: FrameTool, e: Event) {
   tool.action?.(e);
   (e.target as HTMLInputElement).value = "";
 }
 
 
-const contentSlot = ref<HTMLElement | null>(null);
+const contentSlot = useTemplateRef<HTMLElement>("contentSlot");
 
 onMounted(() => {
   contentSlot.value?.appendChild(frame.table.$instance.get(0));
@@ -259,7 +263,7 @@ function updateState() {
 
 
 const loggerEntries = ref<ItemJsonFrameLogEntry[]>([]);
-const loggerEl = ref<HTMLElement | null>(null);
+const loggerEl = useTemplateRef<HTMLElement>("loggerEl");
 
 function setLoggerEntries(entries: ItemJsonFrameLogEntry[]) {
   loggerEntries.value = entries;
@@ -272,7 +276,7 @@ function setLoggerEntries(entries: ItemJsonFrameLogEntry[]) {
 
 const panelMode = ref<"class" | "online" | null>(null);
 const searchBusy = ref(false);
-const typeIDInput = ref<HTMLInputElement | null>(null);
+const typeIDInput = useTemplateRef<HTMLInputElement>("typeIDInput");
 
 const classSearch = reactive({
   classID: "",
