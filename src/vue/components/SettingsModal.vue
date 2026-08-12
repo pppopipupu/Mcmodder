@@ -1760,4 +1760,87 @@ function emptyScheduleRequest() {
   content: "加载中...";
   color: var(--mcmodder-color-text-dark3);
 }
+.data-manager .btn {
+  display: inline-block;
+  padding: 6px 14px;
+  font-size: 14px;
+  line-height: 1.428;
+  border-radius: calc(var(--mcmodder-width-radius) * .8);
+  border: 1px solid var(--mcmodder-color-background-dark3);
+  background: linear-gradient(45deg, var(--mcmodder-color-primary-light), var(--mcmodder-color-accent-light));
+  color: var(--mcmodder-color-text);
+  cursor: var(--mcmodder-cursor-hand);
+  white-space: nowrap;
+  margin: 0;
+}
+.data-manager .btn:hover {
+  background-color: var(--mcmodder-color-accent-background);
+  background-image: none;
+}
+.data-manager .btn:active {
+  background-color: var(--mcmodder-color-accent-transparent2);
+  background-image: none;
+}
+.data-manager .btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.data-manager .btn-primary {
+  background: linear-gradient(45deg, var(--mcmodder-color-primary), var(--mcmodder-color-accent));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px var(--mcmodder-color-primary-transparent1);
+}
+.data-manager .btn-primary:hover {
+  background-color: var(--mcmodder-color-accent-dark1);
+  background-image: none;
+  color: #fff;
+}
+.data-manager .form-control {
+  display: inline-block;
+  height: 34px;
+  padding: 6px 12px;
+  background-color: var(--mcmodder-color-background);
+  border: 1px solid var(--mcmodder-color-background-dark3);
+  border-radius: 10px;
+  color: var(--mcmodder-color-text);
+  font-size: 14px;
+  line-height: 1.428;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.data-manager .form-control:focus {
+  border-color: var(--mcmodder-color-accent);
+  box-shadow: 0 0 0 .2em var(--mcmodder-color-accent-transparent2);
+  outline: none;
+}
+.data-manager .center-block-head {
+  display: flex;
+  align-items: baseline;
+  gap: 1em;
+  margin: .5em 0;
+}
+.data-manager .center-block-head .title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--mcmodder-color-text);
+}
+.data-manager .center-content.mcmodder-storage {
+  margin-top: .5em;
+}
+.data-manager .text-muted {
+  color: var(--mcmodder-color-text-dark3);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.data-manager .center-setting-block h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mcmodder-color-text);
+}
+.data-manager .center-setting-block {
+  background-color: var(--mcmodder-color-background-dark1);
+  border: 1px solid var(--mcmodder-color-background-dark2);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
 </style>
