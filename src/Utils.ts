@@ -783,6 +783,17 @@ export class McmodderUtils {
     return r;
   }
 
+  private static readonly escapeHTMLMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  static escapeHTML(str: string) {
+    return str.replace(/[&<>"']/g, char => (McmodderUtils.escapeHTMLMap as any)[char]);
+  }
+
   static getAbsolutePos(node: Element) {
     const rect = node.getBoundingClientRect();
     return {

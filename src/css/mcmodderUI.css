@@ -732,7 +732,6 @@ body .edui-default .edui-editor-iframeholder {
 .ta_calendar,
 .logreg-suggest,
 .logreg-panel,
-.common-menu-page,
 .mcmodder-logger {
   border-radius: var(--mcmodder-width-radius);
   box-shadow: rgba(50, 50, 100, 0.1) 0px 2px 4px 0px;
@@ -860,7 +859,8 @@ body .edui-default .edui-editor-toolbarboxinner {
   width: 100%;
 }
 .item-table-block .power_area,
-.common-center .right .class-relation-list fieldset {
+.common-center .right .class-relation-list fieldset,
+.common-center .right .class-license-list fieldset {
   border-color: var(--mcmodder-color-primary-transparent1);
   border-radius: calc(var(--mcmodder-width-radius) * .8);
 }

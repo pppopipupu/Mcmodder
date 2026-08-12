@@ -1,7 +1,7 @@
 import { GM_openInTab } from "$";
 import { Mcmodder } from "../Mcmodder";
 import { InputRecommendation, McmodderItemData, McmodderItemList, McmodderTableRowSelection } from "../types";
-import type { ItemJsonFrameApplication, ItemJsonFrameConfig } from "../types";
+import type { ItemJsonFrameApplication, ItemJsonFrameConfig, McmodderUnpurifiedItemData } from "../types";
 export type { ItemJsonFrameApplication, ItemJsonFrameConfig, McmodderItemData };
 import { McmodderDetailedItemListRequestQueue } from "../requestqueue/DetailedItemRequestQueue";
 import { McmodderInferItemListRequestQueue } from "../requestqueue/InferRequestQueue";
@@ -13,6 +13,9 @@ import { McmodderUtils } from "../Utils";
 import { McmodderValues } from "../Values";
 import { McmodderInputType, McmodderPermission } from "../config/ConfigUtils";
 import type { McmodderLogger } from "../widget/logger/Logger";
+import { GMStorageRepository } from "./repository/GMStorageRepository";
+import { IndexedDBRepository } from "./repository/IndexedDBRepository";
+import type { ItemRepository } from "./repository/ItemRepository";
 
 export interface McmodItemEditorInnerData {
   content: string,
@@ -112,11 +115,18 @@ export class ItemJsonFrame {
     return "mcmodderJsonStorage";
   }
 
-  parent: Mcmodder;
-  id: string;
-  $instance: JQuery;
-  instance: Element;
-  logger = new ItemJsonFrameLogger();
+  protected getAllowedKeys() {
+    return ["id", "itemType", "registerName", "metadata", "smallIcon", "largeIcon", "name", "englishName",
+      "creativeTabName", "branch", "type", "jumpTo", "jumpParent", "generalTo", "generalParent", "generalNum",
+      "OredictList", "harvestTools", "maxStackSize", "maxDurability"];
+  }
+
+  protected purifyData(data: McmodderItemData) {
+    const allowedKeys = this.getAllowedKeys();
+    const entries = Object.entries(data);
+    const filteredEntries = entries.filter(([key]) => allowedKeys.includes(key));
+    return Object.fromEntries(filteredEntries) as McmodderItemData;
+  }
   maxPage?: number;
   activeFileName = "";
   selectionList: string[] = [];
@@ -128,6 +138,7 @@ export class ItemJsonFrame {
   protected detailedRequestQueue: McmodderDetailedItemListRequestQueue;
   // 与另一个RequestQueue区分开，这个专用于处理用户手动发起的数据同步请求，只适用于小规模数据
   protected manualRequestQueue: McmodderDetailedItemListRequestQueue;
+  protected readonly itemRepository: ItemRepository<McmodderItemData>;
 
   private component?: ItemJsonFrameExpose;
   private mountPromise?: Promise<void>;
@@ -136,8 +147,10 @@ export class ItemJsonFrame {
     this.id = id;
     this.parent = parent;
 
-    if (!this.parent.utils.getAllConfig(this.getConfigName())) {
-      this.parent.utils.setAllConfig(this.getConfigName(), {});
+    if (this.parent.utils.getConfig("itemRepository")) {
+      this.itemRepository = new IndexedDBRepository(this.getConfigName(), this.getAllowedKeys());
+    } else {
+      this.itemRepository = new GMStorageRepository(this.parent, this.getConfigName());
     }
 
     this.$instance = $(`<div id="jsonframe_${ id }" class="mcmodder-jsonframe"></div>`);
@@ -240,7 +253,7 @@ export class ItemJsonFrame {
 
     this.initContextMenu();
 
-    this.updateSelection();
+    this.itemRepository.init().then(() => this.updateSelection());
 
     this.ensureMounted();
   }
@@ -307,8 +320,8 @@ export class ItemJsonFrame {
   }
 
 
-  updateSelection(selection = this.parent.utils.getAllConfig(this.getConfigName())) {
-    this.selectionList = Object.keys(selection || {}).filter(e => e);
+  async updateSelection() {
+    this.selectionList = await this.itemRepository.listFilename();
     this.notifyUpdate();
   }
 
@@ -339,10 +352,14 @@ export class ItemJsonFrame {
       item = item.trim();
       if (!item) return;
       try {
-        const data = JSON.parse(item) as McmodderItemData & {maxStacksSize?: number};
+        const data = JSON.parse(item) as McmodderUnpurifiedItemData;
         if (data.hasOwnProperty("maxStacksSize")) {
           data.maxStackSize = data.maxStacksSize;
           delete data.maxStacksSize;
+        }
+        if (data.hasOwnProperty("CreativeTabName")) {
+          data.creativeTabName = data.CreativeTabName;
+          delete data.CreativeTabName;
         }
         data.smallIcon = McmodderUtils.appendBase64ImgPrefix(data.smallIcon);
         data.largeIcon = McmodderUtils.appendBase64ImgPrefix(data.largeIcon);
@@ -362,12 +379,13 @@ export class ItemJsonFrame {
     };
   }
 
-  importFromText(text: string, saveAs: string) {
+  async importFromText(text: string, saveAs: string) {
     saveAs = this.getUniqueRegulatedFileName(saveAs);
     const {success, fail, result} = this.parseText(text);
     if (success) {
-      this.parent.utils.setConfig(saveAs, result, this.getConfigName());
-      this.updateSelection();
+      const purified = result!.map(e => this.purifyData(e));
+      await this.itemRepository.write(saveAs, purified);
+      await this.updateSelection();
       McmodderUtils.commonMsg(`已读取并保存为 ${ saveAs }，其中 ${ success } 条解析成功，${ fail } 条解析失败。`);
     }
   }
@@ -383,33 +401,34 @@ export class ItemJsonFrame {
     reader.readAsText(file);
   }
 
-  newUnnamedJson() {
+  async newUnnamedJson() {
     const regulated = this.getUniqueRegulatedFileName("Unnamed.json");
-    this.parent.utils.setConfig(regulated, [], this.getConfigName());
-    this.updateSelection();
+    await this.itemRepository.createFile(regulated);
+    await this.updateSelection();
+    McmodderUtils.commonMsg(`创建了新的文件 ${ regulated } ~`);
   }
 
-  selectFile(fileName: string) {
+  async selectFile(fileName: string) {
     this.activeFileName = fileName;
-    if (fileName) this.loadJson(fileName);
+    if (fileName) await this.loadJson(fileName);
     else this.reset();
   }
 
-  loadJson(fileName: string) {
+  async loadJson(fileName: string) {
     this.table.selectedRowCount = 0;
     this.table.unsaved = false;
-    this.table.setAllData(this.parent.utils.getConfig(fileName, this.getConfigName(), []));
+    this.table.setAllData(await this.itemRepository.read(fileName) ?? []);
     this.hasRearranged = false;
     this.notifyUpdate();
   }
 
-  saveEdit() {
+  async saveEdit() {
     if (!this.table.unsaved) {
       McmodderUtils.commonMsg("当前暂无需要保存的改动...", false);
       return;
     }
     this.table.saveAll();
-    this.parent.utils.setConfig(this.activeFileName, this.table.getAllData(), this.getConfigName());
+    await this.itemRepository.write(this.activeFileName, this.table.getAllData());
     McmodderUtils.commonMsg("所有改动均已保存~");
     this.notifyUpdate();
   }
@@ -421,15 +440,13 @@ export class ItemJsonFrame {
       title: "重命名当前文件",
       html: `将当前已打开的文件重命名为... <input class="form-control" id="jsonframe-rename-input">`,
       showCancelButton: true,
-      preConfirm: () => {
+      preConfirm: async () => {
         const newName = this.getUniqueRegulatedFileName((input.val() as string || "").trim());
         if (name === newName) return;
 
-        const storage = this.parent.utils.getAllConfig(this.getConfigName(), {});
-        const fileData = storage[name];
-        delete storage[name];
-        storage[newName] = fileData;
-        this.parent.utils.setAllConfig(this.getConfigName(), storage);
+        const fileData = await this.itemRepository.read(name);
+        await this.itemRepository.deleteFile(name);
+        await this.itemRepository.write(newName, fileData);
 
         let database: string[] = this.parent.utils.getConfig("jsonDatabase") || [];
         database = database.filter(e => e != name);
@@ -438,7 +455,7 @@ export class ItemJsonFrame {
 
         McmodderUtils.commonMsg("文件重命名成功~");
         this.activeFileName = newName;
-        this.updateSelection();
+        await this.updateSelection();
       }
     });
     const input = $("#jsonframe-rename-input").val(name).change(e => {
@@ -459,20 +476,20 @@ export class ItemJsonFrame {
     });
   }
 
-  async newJson(fileName: string, content: string) {
-    let storages = this.parent.utils.getAllConfig(this.getConfigName());
-    if (Object.keys(storages).includes(fileName)) {
+  async newJson(fileName: string, content: McmodderItemData[]) {
+    let storages = await this.itemRepository.listFilename();
+    if (storages.includes(fileName)) {
       const isConfirm = await this.fileExistedInquire(fileName);
       if (isConfirm.value) {
-        this.parent.utils.setConfig(fileName, content, this.getConfigName());
-        this.updateSelection();
+        await this.itemRepository.write(fileName, content);
+        await this.updateSelection();
         return true;
       }
       return false;
     }
     else {
-      this.parent.utils.setConfig(fileName, content, this.getConfigName());
-      this.updateSelection();
+      await this.itemRepository.write(fileName, content);
+      await this.updateSelection();
       return true;
     }
   }
@@ -495,16 +512,16 @@ export class ItemJsonFrame {
     if (!this.isAvailableFileName(fileName)) return false;
     const isConfirm = await this.fileDeleteInquire(fileName);
     if (isConfirm.value) {
-      this.deleteJson(fileName);
+      await this.deleteJson(fileName);
       McmodderUtils.commonMsg(`成功删除 ${fileName} ~`);
-      this.updateSelection();
+      await this.updateSelection();
       return true;
     }
     return false;
   }
 
-  private deleteJson(fileName: string) {
-    this.parent.utils.setConfig(fileName, null, this.getConfigName());
+  private async deleteJson(fileName: string) {
+    await this.itemRepository.deleteFile(fileName);
     let linking: string[] = this.parent.utils.getConfig("jsonDatabase") || [];
     this.parent.utils.setConfig("jsonDatabase", linking.filter(name => name != fileName));
   }
@@ -708,8 +725,8 @@ export class ItemJsonFrame {
     const rawName = `${classID}-${className}-${classEname}-${typeID}-${(new Date()).toLocaleString()}-${itemList.length}-Original.json`;
     const fileName = McmodderUtils.regulateFileName(rawName);
     this.logger.success(`成功加载全部 ${maxNumber.toLocaleString()} 中的 ${itemList.length.toLocaleString()} 个物品资料，并保存于 ${fileName}。`);
-    this.parent.utils.setConfig(fileName, itemList, "mcmodderJsonStorage");
-    this.updateSelection();
+    await this.itemRepository.write(fileName, itemList);
+    await this.updateSelection();
   }
 
   async getImageBlobByItemList(itemList: McmodderItemList, width: 32 | 128, maxConcurrent = 6) { // 大力出奇迹
