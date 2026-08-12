@@ -111,6 +111,12 @@ export class ItemJsonFrameLogger implements McmodderLogger {
 
 export class ItemJsonFrame {
 
+  parent: Mcmodder;
+  id: string;
+  $instance: JQuery;
+  instance: Element;
+  logger = new ItemJsonFrameLogger();
+
   protected getConfigName() {
     return "mcmodderJsonStorage";
   }
