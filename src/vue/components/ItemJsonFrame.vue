@@ -703,8 +703,10 @@ function downloadFile(file: ItemJsonFrameApplication) {
 .jsonframe-bbs-filelist .mcmodder-table .mcmodder-table-empty td::before {
   content: "暂无数据";
   position: absolute;
-  width: 100%;
   left: 0;
+  top: 0;
+  width: 100%;
+  line-height: 80px;
   color: var(--mcmodder-color-text-dark3);
   text-align: center;
 }

@@ -341,10 +341,12 @@ onBeforeUnmount(() => {
   min-height: 100px;
   position: relative;
 }
-.mcmodder-table-empty td::before {
+.mcmodder-table-empty::before {
   content: "暂无数据";
   text-wrap: nowrap;
   position: absolute;
+  left: 0;
+  top: 0;
   width: 100%;
   line-height: 100px;
   color: var(--mcmodder-color-text-dark3);
