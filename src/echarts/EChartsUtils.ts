@@ -9,6 +9,7 @@ export class EchartsUtils {
   classUserWordChart: any;
   classIndexChart: any;
   centerEditChart: any;
+  worldgenCharts: any[] = [];
   font: 0 | 1 | 2 | 3 | undefined;
 
   constructor(parent: Mcmodder) {
@@ -16,9 +17,18 @@ export class EchartsUtils {
     // Echarts 图表相关兼容
     if (typeof echarts != "undefined") {
       let t = document.getElementById("class-rating");
-      if (t) this.setChartFont(this.classRatingChart = echarts.getInstanceById(t.getAttribute("_echarts_instance_")));
+      if (t) this.setChartFont(this.classRatingChart = echarts.getInstanceByDom(t));
       t = document.getElementById("center-editchart-obj");
-      if (t) this.setChartFont(this.centerEditChart = echarts.getInstanceById(t.getAttribute("_echarts_instance_")));
+      if (t) this.setChartFont(this.centerEditChart = echarts.getInstanceByDom(t));
+      
+      $(".common-world-gen-chart").each((_, e) => {
+        const chart = echarts.getInstanceByDom(e);
+        this.worldgenCharts.push(chart);
+        this.setChartFont(chart);
+        if (parent.isNightMode) {
+          this.setWorldgenChartNightStyle(chart);
+        }
+      });
 
       // 获取字体
       this.font = this.parent.utils.getConfig("customFont");
@@ -147,6 +157,7 @@ export class EchartsUtils {
       o.title[0].textStyle.color = "#464646";
       o.title[0].subtextStyle.color = "#6e7079";
       o.tooltip[0].backgroundColor = "#fff";
+      o.tooltip[0].borderColor = "#666";
       o.tooltip[0].textStyle.color = "#666";
       o.series[0].color = "#3c454c";
       o.axisPointer[0].lineStyle.color = "#b9bec9";
@@ -161,6 +172,7 @@ export class EchartsUtils {
       o.title[0].textStyle.color = "#ccc";
       o.title[0].subtextStyle.color = "#aaa";
       o.tooltip[0].backgroundColor = "#333";
+      o.tooltip[0].borderColor = "#666";
       o.tooltip[0].textStyle.color = "#aaa";
       o.series[0].color = "#789";
       o.axisPointer[0].lineStyle.color = "#666";
@@ -199,12 +211,43 @@ export class EchartsUtils {
     }
   }
 
+  setWorldgenChartBaseStyle(chart: any) {
+    let o = chart.getOption();
+    if (o) {
+      o.tooltip[0].backgroundColor = "#fff";
+      o.tooltip[0].borderColor = "#333";
+      o.tooltip[0].textStyle.color = "#666";
+      o.series[0].itemStyle.color = "#343434";
+      o.axisPointer[0].lineStyle.color = "#b9bec9";
+      o.xAxis[0].axisLabel.textStyle = { color: "#343434" };
+      o.yAxis[0].axisLabel.textStyle = { color: "#343434" };
+      o.yAxis[0].splitLine.lineStyle.color[0] = "#e0e6f1";
+      chart.setOption(o);
+    }
+  }
+
+  setWorldgenChartNightStyle(chart: any) {
+    let o = chart?.getOption();
+    if (o) {
+      o.tooltip[0].backgroundColor = "#333";
+      o.tooltip[0].borderColor = "#666";
+      o.tooltip[0].textStyle.color = "#aaa";
+      o.series[0].itemStyle.color = "#888";
+      o.axisPointer[0].lineStyle.color = "#666";
+      o.xAxis[0].axisLabel.textStyle = { color: "#888" };
+      o.yAxis[0].axisLabel.textStyle = { color: "#888" };
+      o.yAxis[0].splitLine.lineStyle.color[0] = "#444";
+      chart.setOption(o);
+    }
+  }
+
   enableNightStyle() {
     this.setClassRatingChartNightStyle();
     this.setCenterEditChartNightStyle();
     this.setClassUserChartNightStyle(this.classUserEditChart);
     this.setClassUserChartNightStyle(this.classUserWordChart);
     this.setClassIndexChartNightStyle();
+    this.worldgenCharts.forEach(this.setWorldgenChartNightStyle);
   }
 
   disableNightStyle() {
@@ -213,5 +256,6 @@ export class EchartsUtils {
     this.setClassUserChartBaseStyle(this.classUserEditChart);
     this.setClassUserChartBaseStyle(this.classUserWordChart);
     this.setClassIndexChartBaseStyle();
+    this.worldgenCharts.forEach(this.setWorldgenChartBaseStyle);
   }
 }
