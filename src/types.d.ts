@@ -374,6 +374,7 @@ export interface InputRecommendation {
   html?: string;
   value: string;
   showValue?: boolean;
+  alias?: string[];
 }
 export type InputSimplifiedRecommendation = InputRecommendation | string;
 export interface InputRatedRecommendation extends InputRecommendation {

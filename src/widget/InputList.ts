@@ -24,7 +24,7 @@ export class InputList {
     return utils.getConfig(key, item) ?? [];
   };
   static readonly saveRecommendationToConfig = (utils: McmodderUtils, key: string, item: string = "inputList") => (list: InputRecommendation[]) => {
-    const simplified = list.map(e => typeof e === "string" ? e : e.value);
+    const simplified = list.map(e => typeof e === "string" ? e : { value: e.value, alias: e.alias });
     utils.setConfig(key, simplified, item);
     return true;
   }
@@ -138,13 +138,43 @@ export class InputList {
     })
     .on("click", "a.mcmodder-input-delete", e => {
       const target = e.currentTarget;
-      const val = target.parentElement!.getAttribute("data-value");
+      const val = target.parentElement!.parentElement!.getAttribute("data-value");
       this.recommendationList = this.recommendationList.filter(e => e.value != val);
       if (this.onModifyRecommendation!(this.recommendationList)) {
         McmodderUtils.commonMsg("成功从候选列表中移除选中项~");
       } else {
         McmodderUtils.commonMsg("移除失败...", false);
       }
+      e.stopPropagation();
+    })
+    .on("click", "a.mcmodder-input-editalias", e => {
+      const target = e.currentTarget;
+      const val = target.parentElement!.parentElement!.getAttribute("data-value");
+      const entry = this.recommendationList.filter(e => McmodderUtils.escapeHTML(e.value) === val)[0];
+      const alias = entry.alias ? entry.alias.join("; ") : "";
+      swal.fire({
+        html: `
+          <p>在此处修改选中项的快捷名称...（使用 ';' 分隔多个名称）</p>
+          <p class="mcmodder-monospace">${ val }</p>
+          <input class="form-control" id="mcmodder-input-alias" value="${ McmodderUtils.escapeHTML(alias) }"/>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "保存",
+        cancelButtonText: "取消",
+        preConfirm: () => {
+          const newAlias = $("#mcmodder-input-alias").val() as string;
+          if (!newAlias) {
+            delete entry.alias;
+          } else {
+            entry.alias = newAlias.split(";").map(e => e.trim()).filter(e => e);
+          }
+          if (this.onModifyRecommendation!(this.recommendationList)) {
+            McmodderUtils.commonMsg("成功更新选中项的快捷名称~");
+          } else {
+            McmodderUtils.commonMsg("更新失败...", false);
+          }
+        }
+      });
       e.stopPropagation();
     })
     .on("mouseenter", "a.mcmodder-input-option", e => {
@@ -194,9 +224,6 @@ export class InputList {
           const suffix = vals[idx].slice(innerPos);
           vals[idx] = content + suffix;
           newPos = pos - innerPos + content.length;
-          if (isContinuously && suffix) {
-            isContinuously = false;
-          }
         }
         val = vals.join(this.delimiter);
       }
@@ -231,43 +258,56 @@ export class InputList {
 
   private updateRecommendableList(content: string) {
     // 所以我为什么要在这里再写一遍几乎一样的逻辑...TwT
+    content = content.toLowerCase();
     if (!content && this.hideBeforeInput) {
       this.inputList.hide();
       return;
     }
     const recommendableList: InputRatedRecommendation[] = [];
     this.recommendationList.forEach(entry => {
-      let matchScore;
-      const value = entry.value;
-      const pos = value.indexOf(content);
-      if (pos < 0) matchScore = 0;
-      else matchScore = pos === 0 ? 2 : 1;
+      let matchScore = 0;
+      [entry.value, ...(entry.alias ?? [])].map(e => e.toLowerCase()).forEach(value => {
+        const pos = value.indexOf(content);
+        if (pos >= 0) {
+          matchScore += (pos === 0 ? 2 : 1) * content.length / value.length;
+        }
+      });
       recommendableList.push(Object.assign(entry, { matchScore }));
     });
     this.selected = 0;
     this.renderRecommendationList(
       recommendableList
       .filter(e => e.matchScore)
-      .sort((a, b) => a.matchScore! - b.matchScore!)
+      .sort((a, b) => b.matchScore! - a.matchScore!)
     );
   }
 
   private renderRecommendationList(recommendableList: InputRecommendation[]) {
     this.inputList.empty();
     recommendableList.forEach((entry, index) => {
-      let html = entry.html ?? McmodderUtils.escapeHTML(entry.value);
-      if (entry.html != undefined && entry.showValue) {
+      const escapedValue = McmodderUtils.escapeHTML(entry.value);
+      let html = entry.html ?? escapedValue;
+      let title = escapedValue;
+      let alias = "";
+      if (entry.html !== undefined && entry.showValue) {
         html += `&nbsp;<span class="item-ename">${ entry.value }</span>`;
       }
-      $(`<a class="mcmodder-input-option" data-value="${ entry.value }" data-index="${ index }">`)
-      .html(`<span class="text">${ html }</span>`)
+      if (entry.alias !== undefined) {
+        alias = `<span class="alias">${ entry.alias.map(e => McmodderUtils.escapeHTML(e)).join(";&nbsp;") }</span>`;
+        title += ` (${ entry.alias.join("; ") })`;
+      }
+      $(`<a class="mcmodder-input-option" title="${ title }" data-value="${ entry.value }" data-index="${ index }">`)
+      .html(`<span class="text">${ html }${ alias }</span>`)
       .appendTo(this.inputList);
     });
     this.listLength = recommendableList.length;
 
     if (this.onModifyRecommendation) {
       this.inputList.children(".mcmodder-input-option").each((_, e) => {
-        $(`<a class="mcmodder-input-delete"><i class="fa fa-close" /></a>`).appendTo(e);
+        $(`<span class="mcmodder-input-extraoptions">
+          <a class="mcmodder-input-editalias"><i class="fa fa-flash" />
+          <a class="mcmodder-input-delete"><i class="fa fa-close" />
+        </span>`).appendTo(e);
       });
       if (this.getSelectionValue()) {
         $(`<a class="mcmodder-input-option mcmodder-input-new" data-index=${ this.listLength }>`)
@@ -281,6 +321,7 @@ export class InputList {
 
     if (this.inputList.children().length) {
       this.inputList.show();
+      this.updateSelection(0);
     } else {
       this.inputList.hide();
     }

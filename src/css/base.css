@@ -990,6 +990,7 @@ body:not(.view),
 #mcmodder-template-newdescription,
 #mcmodder-history-search,
 #mcmodder-template-search,
+#mcmodder-input-alias,
 #jsonframe-submit-classid {
   text-align: center;
 }
@@ -2385,21 +2386,28 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
   color: var(--mcmodder-color-text);
 }
 .mcmodder-input-option .text {
-  max-width: calc(100% - 2 * var(--mcmodder-width-padding-3));
+  max-width: calc(100% - 5 * var(--mcmodder-width-padding-3));
   overflow: clip;
   text-overflow: ellipsis;
 }
-.mcmodder-input-delete {
+.mcmodder-input-option .text .alias {
+  font-size: 12px;
   color: var(--mcmodder-color-text-dark2);
+  margin-left: 5px;
+}
+.mcmodder-input-extraoptions {
   display: none;
   margin-left: auto;
+}
+.mcmodder-input-extraoptions > * {
+  color: var(--mcmodder-color-text-dark2);
+  padding-left: var(--mcmodder-width-padding-3);
 }
 .mcmodder-input-option.selected {
   background-color: var(--mcmodder-color-primary-transparent1);
 }
-.mcmodder-input-option.selected .mcmodder-input-delete {
+.mcmodder-input-option.selected .mcmodder-input-extraoptions {
   display: block;
-  padding-left: var(--mcmodder-width-padding-3);
 }
 .mcmodder-collapsible-container {
   border: 1px solid var(--mcmodder-color-primary);
