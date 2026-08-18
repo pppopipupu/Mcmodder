@@ -314,6 +314,23 @@ export class AdminInit extends McmodderInit {
                   if (next.children(".verify-copy-text").length) next = next.children(".verify-copy-text");
                   OredictCompareFrame.performCompare(prev, next);
                 }
+                else if (rowText === "开源许可") {
+                  row.find("p").contents().each((_, e) => {
+                    if (e.nodeType === Node.TEXT_NODE) {
+                      const text = e as any as Text;
+                      if (text.data.startsWith(" 【") && text.data.endsWith("】")) {
+                        const link = text.data.slice(2, -1);
+                        const mid = text.splitText(2);
+                        mid.splitText(link.length);
+                        const anchor = document.createElement("a");
+                        anchor.target = "_blank";
+                        anchor.href = link;
+                        anchor.innerText = link;
+                        mid.replaceWith(anchor);
+                      }
+                    }
+                  })
+                }
               });
 
               // 附言缓存
