@@ -8,12 +8,13 @@ export class InputList {
   private readonly container: JQuery;
   private readonly inputNode: JQuery;
   private readonly inputList: JQuery;
-  private readonly input: HTMLInputElement;
+  private readonly input: HTMLInputElement | HTMLTextAreaElement;
   private recommendationList: InputRecommendation[] = [];
   private selected = 0;
   private listLength = 0;
   private isFocused = false;
   private canCreateNew = false;
+  private selectable = false;
   private readonly onInitRecommendation: InputListOnInitRecommendation;
   private readonly onModifyRecommendation?: InputListOnModifyRecommendation;
   private readonly delimiter?: string;
@@ -43,9 +44,9 @@ export class InputList {
     if (inputNode.length != 1) {
       throw new Error("参数须有且仅有一个元素。");
     }
-    this.input = inputNode.get(0) as HTMLInputElement;
-    if (this.input.tagName != "INPUT") {
-      throw new Error("元素必须是 HTMLInputElement。");
+    this.input = inputNode.get(0) as HTMLInputElement | HTMLTextAreaElement;
+    if (this.input.tagName !== "INPUT" && this.input.tagName !== "TEXTAREA") {
+      throw new Error("元素必须是 HTMLInputElement 或 HTMLTextAreaElement。");
     }
 
     this.inputNode = inputNode;
@@ -75,24 +76,24 @@ export class InputList {
       this.isFocused = true;
     })
     .keydown(e => {
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      if (this.selectable && (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Tab" || e.key === "Enter")) {
         e.preventDefault();
       }
     })
     .keyup(e => {
-      if (e.key === "ArrowUp") {
+      if (this.selectable && e.key === "ArrowUp") {
         let selected = this.selected - 1;
         if (selected < 0) selected = this.listLength - (this.canCreateNew ? 0 : 1);
         this.updateSelection(selected);
       }
-      else if (e.key === "ArrowDown") {
+      else if (this.selectable && e.key === "ArrowDown") {
         let selected = this.selected + 1;
         if (selected >= this.listLength + (this.canCreateNew ? 1 : 0)) selected = 0;
         this.updateSelection(selected);
       }
-      else if (e.key === "Tab" || e.key === "Enter") {
+      else if (this.selectable && (e.key === "Tab" || e.key === "Enter")) {
         const node = this.getSelectedOptionNode();
-        if (node) {
+        if (node.length) {
           e.preventDefault();
           node.click();
         }
@@ -103,7 +104,10 @@ export class InputList {
     })
     .blur(_e => {
       this.isFocused = false;
-      setTimeout(() => this.inputList.hide().empty(), 100);
+      setTimeout(() => {
+        this.inputList.hide().empty();
+        this.selectable = false;
+      }, 100);
     });
 
     this.inputList
@@ -215,6 +219,7 @@ export class InputList {
   private setSelectionValue(content: string, isContinuously = false) {
     let val = this.input.value;
     let newPos: number | null = null;
+    let isLast = false;
     const pos = this.input.selectionStart;
     if (this.delimiter != undefined) {
       if (pos != null) {
@@ -226,8 +231,11 @@ export class InputList {
           newPos = pos - innerPos + content.length;
         }
         val = vals.join(this.delimiter);
+        if (idx === vals.length - 1) {
+          isLast = true;
+        }
       }
-      if (isContinuously) {
+      if (isContinuously && isLast) {
         val += this.delimiter;
       }
     }
@@ -260,6 +268,7 @@ export class InputList {
     // 所以我为什么要在这里再写一遍几乎一样的逻辑...TwT
     content = content.toLowerCase();
     if (!content && this.hideBeforeInput) {
+      this.selectable = false;
       this.inputList.hide();
       return;
     }
@@ -305,8 +314,8 @@ export class InputList {
     if (this.onModifyRecommendation) {
       this.inputList.children(".mcmodder-input-option").each((_, e) => {
         $(`<span class="mcmodder-input-extraoptions">
-          <a class="mcmodder-input-editalias"><i class="fa fa-flash" />
-          <a class="mcmodder-input-delete"><i class="fa fa-close" />
+          <a class="mcmodder-input-editalias" tabindex="-1"><i class="fa fa-flash" />
+          <a class="mcmodder-input-delete" tabindex="-1"><i class="fa fa-close" />
         </span>`).appendTo(e);
       });
       if (this.getSelectionValue()) {
@@ -321,9 +330,11 @@ export class InputList {
 
     if (this.inputList.children().length) {
       this.inputList.show();
+      this.selectable = true;
       this.updateSelection(0);
     } else {
       this.inputList.hide();
+      this.selectable = false;
     }
   }
 
