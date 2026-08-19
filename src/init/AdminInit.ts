@@ -22,9 +22,11 @@ export class AdminInit extends McmodderInit {
 
         const passButtonSelector = "#verify-pass-btn:not(.edit), #assistant-pass-btn";
         const refundButtonSelector = "#verify-refund-btn:not(.edit), #assistant-refund-btn";
+        const checkButtonSelector = "#assistant-check-btn";
         const reasonInputSelector = "#verify-reason, #assistant-reason";
         let passButton: JQuery;
         let refundButton: JQuery;
+        let checkButton: JQuery;
         let reasonInput: JQuery;
         let verifyContainer: JQuery;
         let verifyWindow: JQuery;
@@ -120,11 +122,15 @@ export class AdminInit extends McmodderInit {
                 McmodderUtils.commonMsg("在当前显示的待审列表中找不到本待审项...", false);
               }
             })
-            .keyup(e => { // 由于swal自身的特性，使用keydown会导致连续触发二次确认按钮，这里使用keyup
+            .keydown(e => setTimeout(() => { // 由于swal自身的特性，直接检测会导致连续触发二次确认按钮，这里使用setTimeout
               if (this.parent.isMobileClient) {
                 return;
               }
-              if (this.parent.utils.isKeyMatchConfig("keybindVerifyPass", e)) {
+              if (this.parent.utils.isKeyMatchConfig("keybindVerifyCheck", e)) {
+                e.stopPropagation();
+                checkButton?.click();
+              }
+              else if (this.parent.utils.isKeyMatchConfig("keybindVerifyPass", e)) {
                 e.stopPropagation();
                 passButton?.click();
               }
@@ -136,7 +142,7 @@ export class AdminInit extends McmodderInit {
                 e.preventDefault();
                 reasonInput?.focus();
               }
-            })
+            }, 10));
           }
 
           // 打开待审项时打开分屏
@@ -209,11 +215,13 @@ export class AdminInit extends McmodderInit {
 
               passButton = verifyFrame.find(passButtonSelector);
               refundButton = verifyFrame.find(refundButtonSelector);
+              checkButton = verifyFrame.find(checkButtonSelector);
               reasonInput = verifyFrame.find(reasonInputSelector);
 
               if (!this.parent.isMobileClient) {
                 passButton.append(" " + McmodderUtils.keyToHTML(this.parent.utils.getConfig("keybindVerifyPass")));
                 refundButton.append(" " + McmodderUtils.keyToHTML(this.parent.utils.getConfig("keybindVerifyRefund")));
+                checkButton.append(" " + McmodderUtils.keyToHTML(this.parent.utils.getConfig("keybindVerifyCheck")));
                 reasonInput.attr("placeholder", `填写附言或退回理由.... (按下 ${
                   McmodderUtils.keyToString(this.parent.utils.getConfig("keybindVerifyReason"))
                 } 以快速聚焦)`);

@@ -107,7 +107,7 @@ export class ConfigLoader {
     .addNumberConfig("autoVerifyDelay", "自动查询待审项", "当打开百科页面时，自动查询所管理模组的待审项，并弹出提示消息。设置相邻两次自动查询待审项之间的最短冷却时间，单位为小时，设置为小于 0.01 以禁用。",
       0, [0, null], McmodderPermission.MANAGER)
     .addCheckboxConfig("splitScreenOnVerify", "审核页面分屏", "在后台查看一个待审项时，其内容只会占据右半区域，左半部分依旧可预览列表中的其他待审项。（为保证排版正常，此配置在移动端无效）",
-      false, McmodderPermission.MANAGER)
+      false, McmodderPermission.EDITOR)
     .addCheckboxConfig("itemListStylePreview", "样式管理预览", "编辑模组资料列表样式时，实时显示当前样式预览。",
       false, McmodderPermission.MANAGER)
     .addCheckboxConfig("itemListStyleFix", "样式管理修复", "修复百科本体 Bug：原始字符串未转义导致当前样式无法显示。",
@@ -126,13 +126,15 @@ export class ConfigLoader {
     .addCheckboxConfig("lieqi", "猎奇仙人", "猎奇猎奇猎奇！！！")
     .addKeybindConfig("keybindFastLink", "自动链接", `在此可修改打开本脚本所提供“自动链接”功能的快捷键。百科原生自带的“自动链接”（通过 ${ McmodderUtils.keyToString({ altKey: true, keyCode: 88 }) } 打开）已终止支持，其入口会在将来的版本中移除。`,
       { altKey: true, key: "C", keyCode: 67 })
-    .addKeybindConfig("keybindFastSubmit", "快速提交", `在此可修改百科“快速提交”的快捷键。（受技术限制，百科本体的“快速提交”快捷键无法被禁用。为避免冲突，若此项配置包含 ${ McmodderUtils.keyToString({ ctrlKey: true, keyCode: 13 }) }，则其不会生效。）`,
+    .addKeybindConfig("keybindFastSubmit", "快速提交", `在此可修改百科“快速提交”的快捷键。（受技术限制，百科本体的“快速提交”快捷键无法被禁用。为避免冲突，若此项配置包含 ${ McmodderUtils.keyToString({ ctrlKey: true, keyCode: 13, key: "Enter" }) }，则其不会生效。）`,
       { ctrlKey: true, key: "Enter", keyCode: 13 })
-    .addKeybindConfig("keybindVerifyPass", "通过编辑", "在此可修改审核通过的快捷键。",
-      { ctrlKey: true, key: "Enter", keyCode: 13 }, McmodderPermission.MANAGER)
-    .addKeybindConfig("keybindVerifyRefund", "退回编辑", "在此可修改审核退回的快捷键。",
-      { shiftKey: true, key: "Enter", keyCode: 13 }, McmodderPermission.MANAGER)
+    .addKeybindConfig("keybindVerifyPass", "通过编辑", "在此可修改审核通过/助理建议通过的快捷键。",
+      McmodderUtils.getXplatCtrlCombinationKey({ key: "Enter", keyCode: 13 }), McmodderPermission.EDITOR)
+    .addKeybindConfig("keybindVerifyRefund", "退回编辑", "在此可修改审核退回/助理建议退回的快捷键。",
+      { shiftKey: true, key: "Enter", keyCode: 13 }, McmodderPermission.EDITOR)
+    .addKeybindConfig("keybindVerifyCheck", "需要检查", "在此可修改助理需要检查的快捷键（仅审核助理可用）。",
+      McmodderUtils.getXplatCtrlCombinationKey({ shiftKey: true, key: "Enter", keyCode: 13 }), McmodderPermission.EDITOR)
     .addKeybindConfig("keybindVerifyReason", "附言聚焦", "在此可修改聚焦到通过附言/退回原因输入框的快捷键。",
-      { key: "Tab", keyCode: 9 }, McmodderPermission.MANAGER);
+      { key: "Tab", keyCode: 9 }, McmodderPermission.EDITOR);
   }
 }
