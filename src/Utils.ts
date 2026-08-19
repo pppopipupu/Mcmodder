@@ -86,8 +86,8 @@ export class McmodderUtils {
   }
 
   static validateVersionForLoaderID(version: string, loaderID: string) {
-    const list = (McmodderValues.loaderSupportVersions as any)[loaderID];
-    return list && (
+    const list = (McmodderValues.loaderSupportVersions as any)[loaderID] as string[];
+    return !list || (
       list.includes(version) || (
         list[0].includes(">=") && 
         this.versionCompare(version, list[0].split(">=")[1]) > -1

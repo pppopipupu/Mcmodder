@@ -1494,6 +1494,9 @@ body > .container > *,
 .license-list fieldset {
   border-color: var(--mcmodder-color-background-dark2);
 }
+#mcmodder-fabric-hidever {
+  user-select: none;
+}
 .under {
   background: none;
 }

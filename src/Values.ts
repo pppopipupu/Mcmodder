@@ -157,7 +157,7 @@ export class McmodderValues {
   ];
   //26.1以后的版本列表 YY.D.H
   static readonly newVersionList = [
-    [[], [0, 1]] // 26: 26.0(none), 26.1([0, 1])
+    [[], [0, 1, 2, 3]] // 26: 26.0(none), 26.1([0, 1])
   ];
 
   static readonly loaderID = {
