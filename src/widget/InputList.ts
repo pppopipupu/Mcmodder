@@ -1,5 +1,6 @@
 import { InputRatedRecommendation, InputRecommendation, InputSimplifiedRecommendation } from "../types";
 import { McmodderUtils } from "../Utils";
+import { McmodderValues } from "../Values";
 
 type InputListOnInitRecommendation = () => InputSimplifiedRecommendation[];
 type InputListOnModifyRecommendation = (list: InputRecommendation[]) => boolean;
@@ -21,8 +22,8 @@ export class InputList {
   private readonly hideBeforeInput: boolean;
 
   private static readonly intlCollator = new Intl.Collator("zh");
-  static readonly loadRecommendationFromConfig = (utils: McmodderUtils, key: string, item: string = "inputList") => () => {
-    return utils.getConfig(key, item) ?? [];
+  static readonly loadRecommendationFromConfig = (utils: McmodderUtils, key: string, defaultValue = McmodderValues.defaultInputRecommendation[key] ?? [], item: string = "inputList") => () => {
+    return utils.getConfig(key, item, defaultValue);
   };
   static readonly saveRecommendationToConfig = (utils: McmodderUtils, key: string, item: string = "inputList") => (list: InputRecommendation[]) => {
     const simplified = list.map(e => typeof e === "string" ? e : { value: e.value, alias: e.alias });

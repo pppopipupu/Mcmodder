@@ -1,5 +1,7 @@
 import { GM_getValue, GM_info, GM_openInTab } from "$";
-import { ItemCustomTypeList, RecipeJsonFrameGuiBound } from "./types";
+import { InputSimplifiedRecommendation, ItemCustomTypeList, RecipeJsonFrameGuiBound } from "./types";
+import defaultEditReasons from "./assets/json/input/EditReason.json";
+import defaultVerifyReasons from "./assets/json/input/VerifyReason.json";
 
 export class McmodderValues {
 
@@ -86,6 +88,19 @@ export class McmodderValues {
         1: '"-apple-system", "Segoe UI", "Roboto", "Ubuntu", "Arial", "Helvetica", sans-serif',
         2: '"Noto Sans SC", sans-serif',
         3: '"Inter", sans-serif'
+      }
+    },
+    storage: {
+      indexes: {
+        mcmodderItemData: ["id", "itemType", "registerName", "metadata", "name", "englishName", "creativeTabName",
+          "branch", "type", "jumpTo", "jumpParent", "generalTo", "generalParent", "OredictList"],
+        mcmodderRecipeData: ["gui_id"]
+      },
+      keys: {
+        mcmodderItemData: ["id", "itemType", "registerName", "metadata", "smallIcon", "largeIcon", "name", "englishName", 
+          "creativeTabName", "branch", "type", "jumpTo", "jumpParent", "generalTo", "generalParent", "generalNum", 
+          "OredictList", "harvestTools", "maxStackSize", "maxDurability"],
+        mcmodderRecipeData: ["in_id", "out_id", "in_num", "out_num", "in_chance", "out_chance", "power_num", "gui_id"]
       }
     }
   } as const;
@@ -307,4 +322,9 @@ export class McmodderValues {
       </tbody>
     </table>`
   }];
+
+  static readonly defaultInputRecommendation: Record<string, InputSimplifiedRecommendation[]> = {
+    editReasons: defaultEditReasons,
+    verifyReasons: defaultVerifyReasons 
+  };
 }
