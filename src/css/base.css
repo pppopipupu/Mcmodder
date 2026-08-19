@@ -479,7 +479,8 @@ body .top-main .pulldown .top_content,
 #server-tool li,
 .message-menu ul,
 .edit-dataverify-frame,
-.common-center .item-skip-list fieldset {
+.common-center .item-skip-list fieldset,
+.comment-row .comment-delimiter {
   border-color: var(--mcmodder-color-background-dark2);
 }
 .news_block .left .text #random_refresh,
@@ -528,6 +529,11 @@ body .top-main .pulldown .top_content,
 }
 .common-comment-block .comment-row-userinfo img {
   border-color: var(--mcmodder-color-background);
+}
+#relation-frame .relation-list .relation-group li.ui-sortable-helper,
+#modlist-frame .modlist-list .modlist-group li.ui-sortable-helper,
+#license-frame .license-list .license-group li.ui-sortable-helper {
+  border-color: transparent;
 }
 .form-control,
 .bootstrap-tagsinput,
@@ -1003,6 +1009,7 @@ body:not(.view),
 }
 #mcmodder-verify-window-frame .TableBlock {
   position: relative;
+  image-rendering: pixelated;
 }
 .mcmodder-verify-locate {
   margin-left: var(--mcmodder-width-padding-3);
@@ -1852,6 +1859,13 @@ body .arrow {
 .mcmodder-10th-cake {
   background-image: url("https://i.mcmod.cn/editor/upload/20250802/1754102714_179043_nNzj.png");
 }
+.item-table-hover,
+.item-table-block .TableBlock,
+#item-table-gui-frame .gui,
+.item-used-frame .item-table-hover img,
+.item-search-frame .item-table-hover img {
+  image-rendering: pixelated;
+}
 .text-dark,
 .item-table-block .NullItem,
 .item-table-block .NullItem a:hover {
@@ -2392,7 +2406,7 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
   max-width: calc(100% - 5 * var(--mcmodder-width-padding-3));
   overflow: clip;
   text-overflow: ellipsis;
-  line-height: 1;
+  padding: 0;
 }
 .mcmodder-input-option .text .alias {
   font-size: 12px;
@@ -2513,6 +2527,7 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
   padding: var(--mcmodder-width-padding-1);
   max-height: 100vh;
   overflow: scroll;
+  overscroll-behavior-y: contain;
   width: 100%;
 }
 .mcmodder-item-flip {
@@ -2571,6 +2586,9 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
 }
 .mcmodder-item-localecount {
   color: var(--mcmodder-color-version-release-1);
+}
+.mcmodder-horizontal-window #item-table-item-frame {
+  margin-top: 0;
 }
 .mcmodder-recipe-display,
 #item-table-item-frame .item-table-hover.mcmodder-recipe-display {
@@ -2641,6 +2659,9 @@ html.dark .mcmodder-table-mouseover-tr > .mcmodder-table-mouseover-td {
 }
 .text-danger, .badge-danger {
   color: var(--mcmodder-color-text-danger) !important;
+}
+.text-warning, .badge-warning {
+  color: var(--mcmodder-color-text-warning) !important;
 }
 .text-info, .badge-info {
   color: var(--mcmodder-color-text-info) !important;

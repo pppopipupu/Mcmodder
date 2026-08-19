@@ -632,8 +632,14 @@ export class Mcmodder {
         let c = $(e).next();
         if (c.attr("class") === "figcaption") c.css("width", e.getBoundingClientRect().width + "px");
       };
-      $(".common-text .figure .lazy").each((_, e) => f(e));
-      $(document).on("load", ".common-text .figure .lazy", e => f(e.currentTarget));
+      $(".common-text .figure .lazy").each((_, _e) => {
+        const e = _e as HTMLImageElement;
+        if (e.complete) {
+          f(e);
+        } else {
+          e.onload = () => f(e);
+        }
+      });
     }
     else McmodderUtils.addStyle('.common-text .figure {align-items: center;}');
     $(".mold, .progress-list, .class-item-type li, .post-block, .tag li, .mcver li a, .tools-list li a, .edit-tools span, .comment-row, .comment-channel-list li a, .class-relation-list .relation li, .btn, .mcmodder-gui-alert, .edit-tools > span, .center-sub-menu a, .center-content.admin-list a, .center-card-block.badges, .center-card-border, .modlist-block, .common-center .maintext .item-give, .common-center .post-row .postname .tool li a").addClass("mcmodder-content-block");
@@ -977,11 +983,11 @@ export class Mcmodder {
     $(".common-background").remove();
     $("#key").css("color", "var(--mcmodder-color-text)");
 
-    window.addEventListener("scroll", () => {
+    window.addEventListener("scroll", McmodderUtils.throttle(() => {
       this.screenAttachedFrame.forEach(e => {
         e.node.style.top = Math.max(0, window.scrollY - e.parentPosY + McmodderValues.headerContainerHeight) + "px";
       });
-    });
+    }, 16));
 
     this.updateItemTooltip();
     $(document).on("mouseover", ".tooltip", e => {
