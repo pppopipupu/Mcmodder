@@ -999,6 +999,7 @@ body:not(.view),
 #mcmodder-template-newdescription,
 #mcmodder-history-search,
 #mcmodder-template-search,
+#mcmodder-input-newtext,
 #mcmodder-input-alias,
 #jsonframe-submit-classid {
   text-align: center;

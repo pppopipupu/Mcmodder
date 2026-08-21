@@ -154,20 +154,22 @@ export class InputList {
     })
     .on("click", "a.mcmodder-input-editalias", e => {
       const target = e.currentTarget;
-      const val = target.parentElement!.parentElement!.getAttribute("data-value");
+      const val = target.parentElement!.parentElement!.getAttribute("data-value")!;
       const entry = this.recommendationList.filter(e => McmodderUtils.escapeHTML(e.value) === val)[0];
       const alias = entry.alias ? entry.alias.join("; ") : "";
       swal.fire({
         html: `
-          <p>在此处修改选中项的快捷名称...（使用 ';' 分隔多个名称）</p>
-          <p class="mcmodder-monospace">${ val }</p>
+          <p>在此处修改选中项的内容与快捷名称...（使用 ';' 分隔多个快捷名称）</p>
+          <input class="form-control" id="mcmodder-input-newtext" value="${ McmodderUtils.escapeHTML(val) }"/>
           <input class="form-control" id="mcmodder-input-alias" value="${ McmodderUtils.escapeHTML(alias) }"/>
         `,
         showCancelButton: true,
         confirmButtonText: "保存",
         cancelButtonText: "取消",
         preConfirm: () => {
+          const newText = $("#mcmodder-input-newtext").val() as string;
           const newAlias = $("#mcmodder-input-alias").val() as string;
+          entry.value = newText;
           if (!newAlias) {
             delete entry.alias;
           } else {
