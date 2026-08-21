@@ -1025,6 +1025,15 @@ body:not(.view),
 .mcmodder-verify-imgcontainer {
   overflow-x: scroll;
 }
+.mcmodder-verify-deletedentry {
+  opacity: .6;
+  text-decoration: line-through;
+  background-color: var(--mcmodder-color-danger-transparent1) !important;
+}
+.mcmodder-verify-newopinion {
+  text-decoration: underline;
+  background-color: var(--mcmodder-color-accent-transparent1) !important;
+}
 .mcmodder-template-delete {
   position: absolute;
   right: .5em;

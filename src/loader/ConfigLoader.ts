@@ -114,6 +114,8 @@ export class ConfigLoader {
       false, McmodderPermission.MANAGER)
     .addNumberConfig("alwaysNotify", "实时通讯", "设置短评动态提醒自动刷新间隔，单位为分钟，设置为小于 0.1 以禁用。",
       0, [0, null])
+    .addNumberConfig("alwaysNotifyVerification", "实时更新审核项", "设置后台待审列表自动刷新间隔，单位为分钟，设置为小于 0.1 以禁用。",
+      0, [0, null], McmodderPermission.EDITOR)
     .addNumberConfig("preSubmitCheckInterval", "预编辑检测间隔", "设置相邻两次自动检测预编辑资料是否具备可正式提交条件之间的最短冷却时间，单位为小时，设置为小于 0.1 以禁用所有预编辑相关特性。",
       0, [0, null])
     .addCheckboxConfig("fastUrge", "快速催审", "在待审列表中显示“一键催审”按钮。")

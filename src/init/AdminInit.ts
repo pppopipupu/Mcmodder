@@ -8,6 +8,8 @@ import { PlatformCompareFrame } from "../widget/compare/PlatformCompareFrame";
 import { OredictCompareFrame } from "../widget/compare/OredictCompareFrame";
 import { InputList } from "../widget/InputList";
 
+type ParsedOpinion = [number, number, number, number];
+
 export class AdminInit extends McmodderInit {
   private triggered: Set<string> = new Set;
   canRun() {
@@ -36,6 +38,7 @@ export class AdminInit extends McmodderInit {
         let prevHeight = 0;
         // let itemID: number | undefined;
         let verifyID: number | undefined;
+        let intervalEventID: number | undefined;
         const verifyInfo: Record<string, string> = {};
 
         // 一键查询待审项
@@ -161,9 +164,10 @@ export class AdminInit extends McmodderInit {
           }
 
           // 打开待审项时打开分屏
-          $("#connect-frame-sub").on("click", "tr[data-data]", _ => {
+          $("#connect-frame-sub").on("click", "tr[data-data]", e => {
             verifyFrame.empty().addClass("mcmodder-loading-container").append(`<div class="mcmodder-loading"></div>`);
             verifyWindowDivider.expandIfCollapsed();
+            e.currentTarget.classList.remove("mcmodder-verify-newopinion");
           });
 
           singleVerifyCallbackOnSplit = (mutation: MutationRecord) => {
@@ -378,6 +382,18 @@ export class AdminInit extends McmodderInit {
           }
         });
         singleVerifyObserver.observe($("#connect-frame-sub").get(0), { childList: true, subtree: true });
+
+        clearInterval(intervalEventID);
+        const interval = this.parent.utils.getConfig("alwaysNotifyVerification") ?? 0;
+        if (interval > 0.1) {
+          setInterval(() => {
+            if ($(".page-header .title").text() != "模组区内容审核") {
+              clearInterval(intervalEventID);
+              return;
+            }
+            this.compareAndUpdateVerifyList();
+          }, Math.max(interval * 60 * 1e3, 6e3));
+        }
       },
       "MC百科后台管理中心": _mutation => {
         $("td:first-child()").each((_, c) => {
@@ -436,5 +452,148 @@ export class AdminInit extends McmodderInit {
       }
     });
     adminObserver.observe($(".connect-area").get(0), { childList: true });
+  }
+
+  private parseCurrentVerifyListConfig() {
+    const typeID = $("#verify-type-list").val() as string;
+    const classAddOnly = $("#ignore-manager").is(":checked") ? "1" : "0";
+    const userlink = $("#connect-frame-sub .select-row").first().children().last().find("a").first().prop("href");
+    const userID = userlink?.slice(24, -1) ?? "0";
+    let classID = $("#class-version-list").val() as string;
+    if ((typeID !== "0" || userID !== "0") && classID === "0") {
+      classID = "-1";
+    }
+    const ignoreManager = "1";
+    return userlink ? {
+      classID, userID, ignoreManager, classAddOnly, typeID
+    } : {
+      classID, typeID, classAddOnly, userID
+    };
+  }
+
+  private async fetchVerifyList() {
+    const config = this.parseCurrentVerifyListConfig();
+    if (config.classID === "0" && config.userID === "0" && (config.typeID === undefined) || (config.typeID === "0")) {
+      return;
+    }
+    const resp = await this.parent.utils.createRequest({
+      url: "https://admin.mcmod.cn/frame/pageVerifyMod-list/",
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      data: $.param({ data: JSON.stringify(config) })
+    });
+    const state = JSON.parse(resp.responseText)?.state;
+    if (state === undefined || state > 0) {
+      McmodderUtils.commonMsg("待审列表自动更新失败，请检查登录状态和网络环境，或是检查控制台报错...", false);
+      console.error("返回状态异常: ", resp);
+      return;
+    }
+    const html = $(JSON.parse(resp.responseText).html);
+    return html;
+  }
+  
+  private static readonly opinionMapKey = {
+    "通过": 0,
+    "退回": 1,
+    "检查": 2,
+    "等待": 3,
+  } as Record<string, number>;
+
+  private static readonly opinionMapName = {
+    0: "通过",
+    1: "退回",
+    2: "检查",
+    3: "等待"
+  } as Record<number, string>;
+
+  private static readonly opinionMapClassName = {
+    0: "text-success",
+    1: "text-danger",
+    2: "text-warning"
+  } as Record<number, string>;
+
+  private parseOpinions(data: string[]): ParsedOpinion {
+    const result: ParsedOpinion = [0, 0, 0, 0];
+    data.filter(e => e.length === 3).forEach(e => {
+      const value = Number(e.slice(0, -2));
+      const name = e.slice(-2);
+      const key = AdminInit.opinionMapKey[name];
+      result[key] = value;
+    });
+    return result;
+  }
+
+  private renderOpinions(data: ParsedOpinion) {
+    const result: Node[] = [];
+    let first = true;
+    for (let key = 0; key < 3; key++) {
+      if (data[key] === 0) {
+        continue;
+      }
+      const value = data[key];
+      const name = AdminInit.opinionMapName[key];
+      const className = AdminInit.opinionMapClassName[key];
+      if (!first) {
+        result.push(document.createTextNode("、")); // 旧版本 JQuery 允许直接 push
+      } else {
+        first = false;
+      }
+      const span = document.createElement("b");
+      span.classList.add("text");
+      if (className != undefined) {
+        span.classList.add(className);
+      }
+      span.innerText = `${ value > 0 ? "+" : "" }${ value }${ name }`;
+      result.push(span);
+    }
+    return $(result);
+  }
+
+  private async compareAndUpdateVerifyList() {
+    const latestHTML = await this.fetchVerifyList();
+    if (latestHTML === undefined) {
+      return;
+    }
+    const table = $("#verify-list-table > tbody");
+    const latest = latestHTML.find("tbody").children();
+    const current = table.children();
+    const latestID = latest.toArray().map(e => [Number(e.id.split("-")[2]), e] as [number, Element]);
+    const currentID = current.toArray().map(e => [Number(e.id.split("-")[2]), e] as [number, Element]);
+    const latestMap = new Map(latestID);
+    const currentMap = new Map(currentID);
+    const deleted: number[] = [], inserted: number[] = [];
+    latestMap.forEach((e, id) => {
+      if (!currentMap.has(id)) inserted.push(id);
+      else {
+        const latestElement = $(e);
+        const currentElement = $(currentMap.get(id)!);
+        const latestOpinion = this.parseOpinions(latestElement.find("td:nth-child(2) b.text").toArray().map(e => e.textContent));
+        const currentOpinion = this.parseOpinions(currentElement.find("td:nth-child(2) b.text").toArray().map(e => e.textContent));
+        const changed: ParsedOpinion = [0, 0, 0, 0];
+        let sum = 0;
+        for (let i = 0; i < 4; i++) {
+          changed[i] = latestOpinion[i] - currentOpinion[i];
+          sum += Math.abs(changed[i]);
+        }
+        currentElement.find(".mcmodder-verify-changedopinions").remove();
+        if (sum) {
+          const rendered = $(`<span class="mcmodder-verify-changedopinions">[意见变化：<span></span>]</span>`)
+            .appendTo(currentElement.find("td:nth-child(2)"));
+          this.renderOpinions(changed).appendTo(rendered.children());
+          currentElement.addClass("mcmodder-verify-newopinion");
+        }
+      }
+    });
+    currentMap.forEach((_, id) => {
+      if (!latestMap.has(id)) deleted.push(id);
+    });
+    inserted.forEach(id => {
+      const e = latestMap.get(id)!;
+      table.append(e);
+    });
+    deleted.forEach(id => {
+      const e = currentMap.get(id)!;
+      e.classList.add("mcmodder-verify-deletedentry");
+    });
   }
 }
