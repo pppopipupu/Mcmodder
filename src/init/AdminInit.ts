@@ -168,7 +168,7 @@ export class AdminInit extends McmodderInit {
 
           singleVerifyCallbackOnSplit = (mutation: MutationRecord) => {
             // 重排版
-            verifyFrame.empty().removeClass("mcmodder-loading-container");
+            verifyFrame.empty().removeClass("mcmodder-loading-container").trigger("scroll");
             $(mutation.target).contents().appendTo(verifyFrame);
             verifyFrame.find("> p:first-child()").next().hide();
             verifyFrame.find("> p:first-child()").append("<span>[展开]</span>").attr("hide", "1").click(e => {
