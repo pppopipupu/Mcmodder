@@ -7,7 +7,6 @@ export class ConfigLoader {
     cfgutils
     .addColorpickerConfig("themeColor1", "主题样式主配色", "主题样式主配色。", "#86c155")
     .addColorpickerConfig("themeColor2", "主题样式副配色", "主题样式副配色。", "#58b6d8")
-    .addColorpickerConfig("themeColor3", "主题样式警告配色", "主题样式警告配色。", "#ff3030")
     .addCheckboxConfig("autoCheckUpdate", "自动检查更新", "每隔一段时间自动检查更新，并在有新更新可用时提醒。", true)
     .addCheckboxConfig("useSupabase", "启用云端服务", "是否启用 Mcmodder 云端服务与功能。相关服务由 Supabase 驱动。若禁用此项，所有依赖云端服务的功能都不会运作。")
     .addCheckboxConfig("fetchCustomSplashes", "抓取云端闪烁标语", "是否抓取与显示用户投稿并审核通过的 Supabase 云端闪烁标语。")

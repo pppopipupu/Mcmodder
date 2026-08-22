@@ -79,12 +79,16 @@ export class StyleLoader {
     const themeBasePalette: McmodderPalette = {
       "primary": McmodderUtils.setColorBrightness(parent.styleColors.tc1, 80),
       "accent": McmodderUtils.setColorBrightness(parent.styleColors.tc2, 80),
-      "danger": McmodderUtils.setColorBrightness(parent.styleColors.tc3, 80)
+      "danger": McmodderUtils.setColorBrightness("#dc3545", 80),
+      "success": McmodderUtils.setColorBrightness("#28a745", 80),
+      "warning": McmodderUtils.setColorBrightness("#8a6d3b", 80)
     };
     const themeNightPalette: McmodderPalette = {
       "primary": McmodderUtils.setColorBrightness(parent.styleColors.tc1, 60),
       "accent": McmodderUtils.setColorBrightness(parent.styleColors.tc2, 60),
-      "danger": McmodderUtils.setColorBrightness(parent.styleColors.tc3, 60)
+      "danger": McmodderUtils.setColorBrightness("#dc3545", 60),
+      "success": McmodderUtils.setColorBrightness("#28a745", 60),
+      "warning": McmodderUtils.setColorBrightness("#8a6d3b", 60)
     };
     const paletteTransparentStep: PaletteModifierStep = {
       "transparent": {

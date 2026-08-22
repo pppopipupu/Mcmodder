@@ -12,10 +12,41 @@
   color: var(--mcmodder-color-text);
   border-color: 1px solid var(--mcmodder-color-background-transparent);
 }
+.btn.btn-success,
+.btn-dark.btn-success {
+  background: linear-gradient(45deg, var(--mcmodder-color-success-light), var(--mcmodder-color-success-light-transparent1));
+}
+.btn.btn-warning,
+.btn-dark.btn-warning {
+  background: linear-gradient(45deg, var(--mcmodder-color-warning-light), var(--mcmodder-color-warning-light-transparent1));
+}
+.btn.btn-danger,
+.btn-dark.btn-danger {
+  background: linear-gradient(45deg, var(--mcmodder-color-danger-light), var(--mcmodder-color-danger-light-transparent1));
+}
 .btn:hover,
 .btn-dark:hover {
   background-color: var(--mcmodder-color-accent-background);
   background-image: none;
+  color: var(--mcmodder-color-accent-dark2);
+}
+.btn.btn-success:hover,
+.btn-dark.btn-success:hover {
+  background: linear-gradient(45deg, var(--mcmodder-color-success), var(--mcmodder-color-success-transparent1));
+}
+.btn.btn-warning:hover,
+.btn-dark.btn-warning:hover {
+  background: linear-gradient(45deg, var(--mcmodder-color-warning), var(--mcmodder-color-warning-transparent1));
+}
+.btn.btn-danger:hover,
+.btn-dark.btn-danger:hover {
+  background: linear-gradient(45deg, var(--mcmodder-color-danger), var(--mcmodder-color-danger-transparent1));
+}
+.btn:active,
+.btn-dark:active,
+.btn:focus,
+.btn-dark:focus {
+  color: var(--mcmodder-color-accent-dark2);
 }
 .dropdown-menu > .active > a,
 .dropdown-menu > .active > a:hover,

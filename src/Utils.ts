@@ -6,8 +6,7 @@ import { McmodderValues } from "./Values";
 
 export interface ThemeColorData {
   tc1: string,
-  tc2: string,
-  tc3: string
+  tc2: string
 }
 
 export class McmodderUtils {
@@ -62,8 +61,7 @@ export class McmodderUtils {
   static getThemeColors = (utils: McmodderUtils): ThemeColorData => {
     return {
       tc1: utils.getConfig("themeColor1"),
-      tc2: utils.getConfig("themeColor2"),
-      tc3: utils.getConfig("themeColor3")
+      tc2: utils.getConfig("themeColor2")
     }
   }
 
