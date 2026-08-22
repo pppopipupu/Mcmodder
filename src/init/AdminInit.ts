@@ -109,6 +109,7 @@ export class AdminInit extends McmodderInit {
           .bindRight(verifyContainer, true);
 
           if (!this.triggered.has("模组区内容审核")) {
+            this.initAssistantViewed();
             const verifyWindowElement = verifyWindow.get(0);
             $(document).scroll(McmodderUtils.throttle(() => {
               const top = document.scrollingElement?.scrollTop;
@@ -140,6 +141,12 @@ export class AdminInit extends McmodderInit {
                 McmodderUtils.commonMsg("在当前显示的待审列表中找不到本待审项...", false);
               }
             })
+            .on("click", ".assistant-action-btns .action-btn", e => {
+              const data = (e.currentTarget as HTMLElement).dataset.data!;
+              const id = Number(JSON.parse(data).verifyID);
+              this.markEntryAsViewed(id);
+              this.getEntry(id).addClass("mcmodder-verify-commented");
+            })
             .keydown(e => setTimeout(() => { // 由于swal自身的特性，直接检测会导致连续触发二次确认按钮，这里使用setTimeout
               if (this.parent.isMobileClient) {
                 return;
@@ -167,7 +174,8 @@ export class AdminInit extends McmodderInit {
           $("#connect-frame-sub").on("click", "tr[data-data]", e => {
             verifyFrame.empty().addClass("mcmodder-loading-container").append(`<div class="mcmodder-loading"></div>`);
             verifyWindowDivider.expandIfCollapsed();
-            e.currentTarget.classList.remove("mcmodder-verify-newopinion");
+            const target = $(e.currentTarget);
+            this.mergeChangedOpinions(target);
           });
 
           singleVerifyCallbackOnSplit = (mutation: MutationRecord) => {
@@ -374,10 +382,21 @@ export class AdminInit extends McmodderInit {
               // 附言缓存
               const verifyId = Number(JSON.parse($("#verify-pass-btn, #assistant-pass-btn").attr("data-data")).verifyID);
               $("#verify-reason, #assistant-reason")
-              .val(lastRefundText[verifyId] || "")
+              .val(lastRefundText[verifyId] ?? "")
               .focusout(e => {
                 lastRefundText[verifyId] = (e.currentTarget as HTMLInputElement).value;
+                if (e.currentTarget.id === "assistant-reason" && verifyID) {
+                  this.markEntryAsViewed(verifyID);
+                }
               });
+            }
+            else {
+              const table = Array.from(mutation.addedNodes).filter(node => (node as Element).id === "verify-list-table")[0];
+              if (table) {
+                $(table).children("tbody").children().each((_, e) => {
+                  this.checkEntry(e);
+                });
+              }
             }
           }
         });
@@ -460,7 +479,7 @@ export class AdminInit extends McmodderInit {
     const userlink = $("#connect-frame-sub .select-row").first().children().last().find("a").first().prop("href");
     const userID = userlink?.slice(24, -1) ?? "0";
     let classID = $("#class-version-list").val() as string;
-    if ((typeID !== "0" || userID !== "0") && classID === "0") {
+    if (classID === "0" && typeID !== "0" || userID !== "0") {
       classID = "-1";
     }
     const ignoreManager = "1";
@@ -512,18 +531,25 @@ export class AdminInit extends McmodderInit {
     2: "text-warning"
   } as Record<number, string>;
 
-  private parseOpinions(data: string[]): ParsedOpinion {
+  private getOpinions(elem: JQuery) {
+    return elem.find("td:nth-child(2) b.text");
+  }
+
+  private parseOpinions(elem: JQuery): ParsedOpinion {
+    const data = elem.toArray().map(e => e.textContent);
     const result: ParsedOpinion = [0, 0, 0, 0];
-    data.filter(e => e.length === 3).forEach(e => {
+    data.forEach(e => {
       const value = Number(e.slice(0, -2));
       const name = e.slice(-2);
       const key = AdminInit.opinionMapKey[name];
-      result[key] = value;
+      if (key !== undefined) {
+        result[key] = value;
+      }
     });
     return result;
   }
 
-  private renderOpinions(data: ParsedOpinion) {
+  private renderOpinions(data: ParsedOpinion, showPositiveSign = false) {
     const result: Node[] = [];
     let first = true;
     for (let key = 0; key < 3; key++) {
@@ -534,7 +560,7 @@ export class AdminInit extends McmodderInit {
       const name = AdminInit.opinionMapName[key];
       const className = AdminInit.opinionMapClassName[key];
       if (!first) {
-        result.push(document.createTextNode("、")); // 旧版本 JQuery 允许直接 push
+        result.push(document.createTextNode("、"));
       } else {
         first = false;
       }
@@ -543,7 +569,7 @@ export class AdminInit extends McmodderInit {
       if (className != undefined) {
         span.classList.add(className);
       }
-      span.innerText = `${ value > 0 ? "+" : "" }${ value }${ name }`;
+      span.innerText = `${ showPositiveSign && value > 0 ? "+" : "" }${ value }${ name }`;
       result.push(span);
     }
     return $(result);
@@ -557,8 +583,8 @@ export class AdminInit extends McmodderInit {
     const table = $("#verify-list-table > tbody");
     const latest = latestHTML.find("tbody").children();
     const current = table.children();
-    const latestID = latest.toArray().map(e => [Number(e.id.split("-")[2]), e] as [number, Element]);
-    const currentID = current.toArray().map(e => [Number(e.id.split("-")[2]), e] as [number, Element]);
+    const latestID = latest.toArray().map(e => [this.getVerifyID(e), e] as [number, Element]);
+    const currentID = current.toArray().map(e => [this.getVerifyID(e), e] as [number, Element]);
     const latestMap = new Map(latestID);
     const currentMap = new Map(currentID);
     const deleted: number[] = [], inserted: number[] = [];
@@ -567,8 +593,8 @@ export class AdminInit extends McmodderInit {
       else {
         const latestElement = $(e);
         const currentElement = $(currentMap.get(id)!);
-        const latestOpinion = this.parseOpinions(latestElement.find("td:nth-child(2) b.text").toArray().map(e => e.textContent));
-        const currentOpinion = this.parseOpinions(currentElement.find("td:nth-child(2) b.text").toArray().map(e => e.textContent));
+        const latestOpinion = this.parseOpinions(this.getOpinions(latestElement));
+        const currentOpinion = this.parseOpinions(this.getOpinions(currentElement));
         const changed: ParsedOpinion = [0, 0, 0, 0];
         let sum = 0;
         for (let i = 0; i < 4; i++) {
@@ -579,7 +605,7 @@ export class AdminInit extends McmodderInit {
         if (sum) {
           const rendered = $(`<span class="mcmodder-verify-changedopinions">[意见变化：<span></span>]</span>`)
             .appendTo(currentElement.find("td:nth-child(2)"));
-          this.renderOpinions(changed).appendTo(rendered.children());
+          this.renderOpinions(changed, true).appendTo(rendered.children());
           currentElement.addClass("mcmodder-verify-newopinion");
         }
       }
@@ -590,10 +616,81 @@ export class AdminInit extends McmodderInit {
     inserted.forEach(id => {
       const e = latestMap.get(id)!;
       table.append(e);
+      this.checkEntry(e);
     });
     deleted.forEach(id => {
       const e = currentMap.get(id)!;
       e.classList.add("mcmodder-verify-deletedentry");
     });
+  }
+
+  private mergeChangedOpinions(target: JQuery) {
+    const changed = target.find(".mcmodder-verify-changedopinions");
+    const changedText = changed.find("b.text");
+    const parsedChanged = this.parseOpinions(changedText);
+    target.removeClass("mcmodder-verify-newopinion");
+    const td = changed.parents("td").first();
+    const current = this.parseOpinions(this.getOpinions(td));
+    const targetText = "[📚 助理意见：";
+    for (let i = 0; i < 4; i++) {
+      current[i] += parsedChanged[i];
+    }
+    changed.remove();
+    const node = td.contents().filter((_, e) => e.nodeType === Node.TEXT_NODE && (e as any as Text).data === targetText)[0];
+    if (node !== undefined) {
+      while (node.nextSibling !== null) {
+        node.nextSibling.remove();
+      }
+      node.previousSibling?.remove();
+      node.remove();
+    }
+    $("<br>").appendTo(td);
+    $(document.createTextNode(targetText)).appendTo(td);
+    this.renderOpinions(current).appendTo(td);
+    $(document.createTextNode("]")).appendTo(td);
+  }
+
+  private readonly assistantViewed = this.parent.utils.getAllConfig("assistantViewed", {}) as Record<number, number[]>;
+  private readonly assistantViewedSet = new Set<number>();
+  
+  private initAssistantViewed() {
+    const keys = Object.keys(this.assistantViewed).map(Number);
+    const time = McmodderUtils.getStartTime(Date.now(), 0);
+    keys.forEach(date => {
+      if (time - date > 30 * 24 * 60 * 60 * 1e3) {
+        delete this.assistantViewed[date];
+      } else {
+        this.assistantViewed[date].forEach(id => {
+          this.assistantViewedSet.add(id);
+        });
+      }
+    });
+  }
+
+  private markEntryAsViewed(id: number) {
+    const date = McmodderUtils.getStartTime(Date.now(), 0);
+    if (this.assistantViewed[date] === undefined) {
+      this.assistantViewed[date] = [id];
+    } else {
+      this.assistantViewed[date].push(id);
+    }
+    this.assistantViewedSet.add(id);
+    this.parent.utils.setAllConfig("assistantViewed", this.assistantViewed);
+  }
+
+  private getVerifyID(elem: JQuery | Node) {
+    return Number($(elem).attr("id")?.split("-")[2]);
+  }
+
+  private getEntry(id: number) {
+    return $(`#verify-row-${ id }-tr`);
+  }
+
+  private checkEntry(elem: JQuery | Node) {
+    elem = $(elem);
+    const id = this.getVerifyID(elem);
+    if (this.assistantViewedSet.has(id)) {
+      elem.addClass("mcmodder-verify-commented");
+    }
   }
 }
