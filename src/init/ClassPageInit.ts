@@ -448,6 +448,12 @@ export class ClassPageInit extends McmodderInit {
     $(".class-excount .span").first().css("border-right-color", "var(--mcmodder-color-background-dark2)");
 
     // 若参与了活动，则为活动添加外边框
-    $(".class-text > span.figure").addClass("mcmodder-golden-alert").css("width", "100%");
+    const events = $(".class-text > span.figure");
+    if (events.length) {
+      const eventContainer = $('<div class="mcmodder-modjam-container">').insertBefore(events.first());
+      events.appendTo(eventContainer);
+      events.addClass("mcmodder-golden-alert").css("width", "100%")
+        .find(".figcaption").css("color", "var(--mcmodder-color-text-dark1)");
+    }
   }
 }

@@ -1727,6 +1727,20 @@ body .arrow {
   display: inline-block;
   text-align: center;
 }
+.mcmodder-modjam-container {
+  display: flex;
+  gap: var(--mcmodder-width-padding-3);
+}
+.mcmodder-modjam-container .figure {
+  padding: 0;
+}
+.mcmodder-modjam-container img {
+  border-top-left-radius: var(--mcmodder-width-radius);
+  border-top-right-radius: var(--mcmodder-width-radius);
+}
+.mcmodder-modjam-container .figcaption {
+  padding: .2em var(--mcmodder-width-padding-3);
+}
 .edit-autolink-list li,
 .refresh-text,
 .mcmodder-copyable {
