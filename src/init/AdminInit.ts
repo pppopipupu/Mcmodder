@@ -135,7 +135,11 @@ export class AdminInit extends McmodderInit {
               $(e.currentTarget).toggleClass("large");
             })
             .on("click", ".mcmodder-verify-locate", _e => {
-              const tr = $(`#verify-row-${ verifyID }-tr`);
+              if (verifyID === undefined) {
+                McmodderUtils.commonMsg("待审项 ID 获取失败...", false);
+                return;
+              }
+              const tr = this.getEntry(verifyID);
               if (tr.length) {
                 McmodderUtils.highlight(tr, "gold", 2e3, true);
               } else {
@@ -212,16 +216,7 @@ export class AdminInit extends McmodderInit {
                 verifyFrame = $("#verify-window-frame");
               }
 
-              // 解析基本信息
-              verifyFrame.children("p").filter((_, p) => p.textContent.startsWith("操作类型")).text().split("，")
-              .forEach(text => {
-                const colon = text.indexOf("：");
-                if (colon < 0) return;
-                const key = text.slice(0, colon);
-                const value = text.slice(colon + 1);
-                verifyInfo[key] = value;
-              });
-
+              // 定位
               try {
                 verifyID = verifyFrame.find("#verify-pass-btn, #assistant-pass-btn").data("data").verifyID;
                 const p = $(`<p>本待审项 ID = </p>`).prependTo(verifyFrame);
@@ -233,6 +228,31 @@ export class AdminInit extends McmodderInit {
               } catch (e) {
                 McmodderUtils.commonMsg("读取待审项 ID 失败: " + String(e), false);
               }
+
+              // 解析基本信息
+              let currentPos = 0;
+              const verifyInfoText = verifyFrame.children("p").filter((_, p) => p.textContent.startsWith("操作类型")).get(0).firstChild as Text;
+              verifyInfoText.data.split("，")
+              .forEach(text => {
+                const colon = text.indexOf("：");
+                if (colon < 0) return;
+                const key = text.slice(0, colon);
+                const value = text.slice(colon + 1);
+                verifyInfo[key] = value;
+
+                // 添加用户个人主页链接
+                if (key === "编辑者" && verifyID !== undefined) {
+                  const uid = this.getEditor(verifyID);
+                  const mid = verifyInfoText.splitText(currentPos + key.length + 1);
+                  mid.splitText(value.length);
+                  const link = document.createElement("a");
+                  link.innerText = value;
+                  link.target = "_blank";
+                  link.href = McmodderUtils.getCenterURL(uid);
+                  mid.replaceWith(link);
+                }
+                currentPos += text.length + 1;
+              });
 
               // if (info["操作类型"] === "资料修改") {
               //   const tr = $(`#verify-row-${ verifyID }-tr`);
@@ -398,6 +418,7 @@ export class AdminInit extends McmodderInit {
               if (table) {
                 $(table).children("tbody").children().each((_, e) => {
                   this.checkEntry(e);
+                  this.addUserLink(e);
                 });
               }
             }
@@ -620,6 +641,7 @@ export class AdminInit extends McmodderInit {
       const e = latestMap.get(id)!;
       table.append(e);
       this.checkEntry(e);
+      this.addUserLink(e);
     });
     deleted.forEach(id => {
       const e = currentMap.get(id)!;
@@ -685,7 +707,7 @@ export class AdminInit extends McmodderInit {
     return Number($(elem).attr("id")?.split("-")[2]);
   }
 
-  private getEntry(id: number) {
+  private getEntry(id: number | string) {
     return $(`#verify-row-${ id }-tr`);
   }
 
@@ -695,5 +717,28 @@ export class AdminInit extends McmodderInit {
     if (this.assistantViewedSet.has(id)) {
       elem.addClass("mcmodder-verify-commented");
     }
+  }
+
+  private addUserLink(elem: JQuery | Node) {
+    const userFilter = $(elem).find(".user-online-state");
+    const uid = this.getEditor(elem);
+    const link = McmodderUtils.getCenterURL(uid);
+    $(`
+      <span class="ignore-parent" style="display:inline-block;">
+        <a href="${ link }" target="_blank">
+          <i title="查看个人主页" class="fa fa-home"></i>
+        </a>
+      </span>
+    `)
+    .insertAfter(userFilter);
+  }
+
+  private getEditor(elem: JQuery | Node | number | string) {
+    if (typeof elem === "number" || typeof elem === "string") {
+      elem = this.getEntry(elem);
+    }
+    const userFilter = $(elem).find(".verify-user-filter");
+    const uid = Number(userFilter.data("uid"));
+    return uid;
   }
 }
