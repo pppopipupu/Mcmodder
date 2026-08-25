@@ -7,6 +7,7 @@ import { RelationCompareFrame } from "../widget/compare/RelationCompareFrame";
 import { PlatformCompareFrame } from "../widget/compare/PlatformCompareFrame";
 import { OredictCompareFrame } from "../widget/compare/OredictCompareFrame";
 import { InputList } from "../widget/InputList";
+import { McmodderMainText } from "../widget/MainText";
 
 type ParsedOpinion = [number, number, number, number];
 
@@ -283,6 +284,8 @@ export class AdminInit extends McmodderInit {
                   const textA = row.find("td:nth-child(3) .common-text");
                   const textB = row.find("td:nth-child(2) .common-text");
                   (new TextCompareFrame(insertPos, textA, textB)).performCompare();
+                  new McmodderMainText(this.parent, textA);
+                  new McmodderMainText(this.parent, textB);
                 }
                 else if (rowText === "模组关系") {
                   const prev = row.find("td:nth-child(3) .verify-copy-text");

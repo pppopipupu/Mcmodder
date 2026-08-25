@@ -1,4 +1,5 @@
 import { McmodderUtils } from "../Utils";
+import { McmodderMainText } from "../widget/MainText";
 import { McmodderInit } from "./Init";
 import { ItemTabInit } from "./ItemTabInit";
 
@@ -133,39 +134,8 @@ export class ItemPageInit extends McmodderInit {
       })
     }
 
-    if (this.parent.utils.getConfig("linkCheck")) {
-      const linkMap: Map<string, string> = new Map;
-      const warnList: string[] = [];
-      let clashFlag = false;
-      let fandomFlag = false;
-      $('.item-content > *:not(.item-data) a:not([href="javascript:void(0);"])')
-      .filter((_, c) => !!(c.textContent && (c.parentNode as Element)?.tagName != "LEGEND"))
-      .each((_, a) => {
-        const key = a.textContent, value = (a as HTMLAnchorElement).href.replaceAll(/https:\/\/www1?\.mcmod\.cn/g, "");
-        if (this.parent.utils.getConfig("linkMark")) $(a).after(`<code class="mcmodder-link-check">${value}</code>`);
-        if (!linkMap.has(key)) linkMap.set(key, value);
-        else if (linkMap.get(key) != value) warnList.push(key);
-      })
-      .each((_, a) => {
-        if (warnList.includes(a.textContent)) {
-          a.classList.add("mcmodder-link-warn");
-          clashFlag = true;
-        } else if ((a as HTMLAnchorElement).href.includes("minecraft.fandom.com")) {
-          a.classList.add("mcmodder-link-warn");
-          fandomFlag = true;
-        }
-      });
-      if (clashFlag) McmodderUtils.commonMsg("发现疑似的链接冲突问题，请检查~", false);
-      if (fandomFlag) McmodderUtils.commonMsg("发现 Minecraft Wiki Fandom 链接，请将其及时更新至 zh.minecraft.wiki ~", false);
-    }
-
-    $(".figure img").bind("load", e => { // 本地化检测
-      const img = $(e.currentTarget);
-      if (!img.prop("src").includes("mcmod.cn")) {
-        img.parent()
-        .append('<span class="mcmodder-common-danger" style="display: inherit;">该图片尚未本地化！</span>')
-        .css("border", "10px solid red");
-      }
+    $(".item-content").each((_, e) => {
+      new McmodderMainText(this.parent, e);
     });
 
     new ItemTabInit(this.parent).run();

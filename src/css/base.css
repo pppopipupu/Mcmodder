@@ -1759,9 +1759,16 @@ body .arrow {
   background-color: var(--mcmodder-color-primary-transparent2);
   border-radius: 4px;
   margin: 0 2px 0 2px;
+  border: none;
+  font-size: 80%;
+  color: var(--mcmodder-color-primary-dark2);
+  padding: 2px 2px;
 }
-.mcmodder-link-warn {
+.mcmodder-link-check.mcmodder-link-warn {
   border: 2px solid var(--mcmodder-color-danger);
+}
+.mcmodder-link-check .mcmodder-link-icon {
+  margin: 2px;
 }
 .center-block-head .more {
   color: var(--mcmodder-color-text-dark2);

@@ -9,6 +9,7 @@ import svgPlatformQuilt from "../assets/platform/quilt.svg";
 import svgPlatformRift from "../assets/platform/rift.svg";
 import svgPlatformLiteloader from "../assets/platform/liteloader.svg";
 import svgPlatformDefault from "../assets/platform/default.svg";
+import { McmodderMainText } from "../widget/MainText";
 
 export class ClassPageInit extends McmodderInit {
 
@@ -266,16 +267,8 @@ export class ClassPageInit extends McmodderInit {
       $(".class-info-right, .class-excount").addClass("mcmodder-disable-modern");
     }
 
-    // 图像本地化检测
-    if (this.parent.utils.getConfig("imageLocalizedCheck")) $(document).on("load", ".figure img", img => {
-      const src = (img.currentTarget as HTMLImageElement).src;
-      fetch(src, { method: "HEAD" }).then(resp => {
-        if (resp.status != 200) return;
-        if (Number(resp.headers.get("content-length")) > 1024000) return; // editor.options.fileMaxSize
-        if (!["image/png", "image/jpg", "image/jpeg", "image/gif"].includes(resp.headers.get("content-type") || "")) return; // editor.options.fileAllowFiles ?
-        if (!src.includes("mcmod.cn")) $(img).parent().append('<span class="mcmodder-common-danger" style="display: inherit;">该图片尚未本地化！</span>').css("border", "10px solid red");
-      });
-    });
+    // maintext
+    new McmodderMainText(this.parent, $(".text-area.common-text"));
 
     if (this.parent.utils.getConfig("mcmodderUI")) {
       $(".class-item-type .mold:not(.mold-0)").each((_, c) => {
