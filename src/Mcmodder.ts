@@ -303,14 +303,16 @@ export class Mcmodder {
   switchProfile(uid: number) {
     if (uid) {
       const profile = this.utils.getProfile("*", uid);
-      const expires = (profile.expirationDate && profile.expirationDate > Date.now()) ? new Date(profile.expirationDate) : 30;
+      const expirationMs = (profile.expirationDate && profile.expirationDate > Date.now()) ? profile.expirationDate : Date.now() + 30 * 24 * 60 * 60 * 1000;
+      const expires = new Date(expirationMs);
       $.cookie("_uuid", profile.uuid, { domain: ".mcmod.cn", path: "/", expires });
       if (typeof GM_cookie !== "undefined" && GM_cookie.set && profile.uuid) {
         GM_cookie.set({
           name: "_uuid",
           value: profile.uuid,
           domain: ".mcmod.cn",
-          path: "/"
+          path: "/",
+          expirationDate: Math.floor(expirationMs / 1000)
         }, () => {});
       }
       this.currentUsername = profile.nickname;
@@ -457,13 +459,15 @@ export class Mcmodder {
     const previousUuid = $.cookie("_uuid");
 
     try {
-      $.cookie("_uuid", uuid, { domain: ".mcmod.cn", path: "/", expires: 30 });
+      const initialExpirationMs = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      $.cookie("_uuid", uuid, { domain: ".mcmod.cn", path: "/", expires: new Date(initialExpirationMs) });
       if (typeof GM_cookie !== "undefined" && GM_cookie.set) {
         GM_cookie.set({
           name: "_uuid",
           value: uuid,
           domain: ".mcmod.cn",
-          path: "/"
+          path: "/",
+          expirationDate: Math.floor(initialExpirationMs / 1000)
         }, () => {});
       }
 
@@ -480,9 +484,20 @@ export class Mcmodder {
       const parsed = this.parseCenterProfileFromHTML(resp.responseText, resp.finalUrl || "", uuid);
       if (!parsed) {
         if (previousUuid) {
-          $.cookie("_uuid", previousUuid, { domain: ".mcmod.cn", path: "/" });
+          let restoreExpirationMs = Date.now() + 30 * 24 * 60 * 60 * 1000;
+          try {
+            const myProfilesForRestore = this.utils.getConfigAsNumberList("myProfiles");
+            for (const rid of myProfilesForRestore) {
+              const rp = this.utils.getProfile("*", rid) as McmodderProfileData;
+              if (rp && rp.uuid === previousUuid && rp.expirationDate && rp.expirationDate > Date.now()) {
+                restoreExpirationMs = rp.expirationDate;
+                break;
+              }
+            }
+          } catch {}
+          $.cookie("_uuid", previousUuid, { domain: ".mcmod.cn", path: "/", expires: new Date(restoreExpirationMs) });
           if (typeof GM_cookie !== "undefined" && GM_cookie.set) {
-            GM_cookie.set({ name: "_uuid", value: previousUuid, domain: ".mcmod.cn", path: "/" }, () => {});
+            GM_cookie.set({ name: "_uuid", value: previousUuid, domain: ".mcmod.cn", path: "/", expirationDate: Math.floor(restoreExpirationMs / 1000) }, () => {});
           }
         } else {
           $.cookie("_uuid", null, { domain: ".mcmod.cn", path: "/" });
@@ -520,9 +535,20 @@ export class Mcmodder {
       });
     } catch (err) {
       if (previousUuid) {
-        $.cookie("_uuid", previousUuid, { domain: ".mcmod.cn", path: "/" });
+        let restoreExpirationMs = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        try {
+          const myProfilesForRestore = this.utils.getConfigAsNumberList("myProfiles");
+          for (const rid of myProfilesForRestore) {
+            const rp = this.utils.getProfile("*", rid) as McmodderProfileData;
+            if (rp && rp.uuid === previousUuid && rp.expirationDate && rp.expirationDate > Date.now()) {
+              restoreExpirationMs = rp.expirationDate;
+              break;
+            }
+          }
+        } catch {}
+        $.cookie("_uuid", previousUuid, { domain: ".mcmod.cn", path: "/", expires: new Date(restoreExpirationMs) });
         if (typeof GM_cookie !== "undefined" && GM_cookie.set) {
-          GM_cookie.set({ name: "_uuid", value: previousUuid, domain: ".mcmod.cn", path: "/" }, () => {});
+          GM_cookie.set({ name: "_uuid", value: previousUuid, domain: ".mcmod.cn", path: "/", expirationDate: Math.floor(restoreExpirationMs / 1000) }, () => {});
         }
       } else {
         $.cookie("_uuid", null, { domain: ".mcmod.cn", path: "/" });
